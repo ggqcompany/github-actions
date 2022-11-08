@@ -1,0 +1,168 @@
+name: GetAwsValue
+
+# AWS 배포를 위해 필요한 값을 구하는 Workflow
+# 개발자는 아래 env 값을 확인하고 필요 시 수정해주어야 한다.
+# Backend AWS Naming Convention 을 참고하여 input 값을 넘겨주어야 한다.
+# link: https://docs.google.com/document/d/1loswue7bJ2u8h6eDSx0KFk6fhknEel5QKn-Tb96tonQ
+
+# inputs:
+# ex) product_code : ggq, pro, plp
+# ex) application_code : lol_statistics, lol_auth
+# ex) s3_api_doc_folder_name : ggq-lol-auth (s3 에서는 dash를 사용하므로)
+env:
+  service_prefix: ecss
+  cluster_prefix: ecsc
+  repository_prefix: ecr
+  s3_prefix: s3
+  s3_name: lol-auth
+
+on:
+  workflow_call:
+    inputs:
+      region:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      account_id_dev:
+        type: string
+        required: true
+      account_id_stg:
+        type: string
+        required: true
+      account_id_prod:
+        type: string
+        required: true
+      product_code:
+        type: string
+        required: true
+      application_code:
+        type: string
+        required: true
+      s3_api_doc_folder_name:
+        type: string
+        required: false
+    outputs:
+      ecr_registry:
+        value: ${{ jobs.GetAwsValue.outputs.ecr_registry }}
+      ecr_repository:
+        value: ${{ jobs.GetAwsValue.outputs.ecr_repository }}
+      task_definition:
+        value: ${{ jobs.GetAwsValue.outputs.task_definition }}
+      container:
+        value: ${{ jobs.GetAwsValue.outputs.container }}
+      service:
+        value: ${{ jobs.GetAwsValue.outputs.service }}
+      cluster:
+        value: ${{ jobs.GetAwsValue.outputs.cluster }}
+      region:
+        value: ${{ jobs.GetAwsValue.outputs.region }}
+      api_doc:
+        value: ${{ jobs.GetAwsValue.outputs.api_doc }}
+
+jobs:
+  GetAwsValue:
+    runs-on: ubuntu-latest
+    outputs:
+      ecr_registry: ${{ env.ECR_REGISTRY }}
+      ecr_repository: ${{ env.ECR_REPOSITORY }}
+      task_definition: ${{ env.TASK_DEFINITION }}
+      container: ${{ inputs.application_code }}
+      service: ${{  env.SERVICE }}
+      cluster: ${{ env.CLUSTER }}
+      region: ${{ inputs.region }}
+      api_doc: ${{ env.API_DOC }}
+
+    steps:
+      - name: Get AWS account id
+        run: |
+          if '${{ inputs.environment == 'PROD' }}'
+          then
+            echo "ACCOUNT_ID=$(echo ${{ inputs.account_id_prod }})" >> $GITHUB_ENV
+          elif '${{ inputs.environment == 'STG' }}'
+          then
+            echo "ACCOUNT_ID=$(echo ${{ inputs.account_id_stg }})" >> $GITHUB_ENV
+          else
+            echo "ACCOUNT_ID=$(echo ${{ inputs.account_id_dev }})" >> $GITHUB_ENV
+          fi
+
+      # Extract 'DEV', 'STG', 'PROD' -> 'd', 's', 'p'
+      - name: Extract short environment name like 'd', 's', 'p'
+        run: |
+          echo "SHORT_ENVIRONMENT=$(echo "${{ inputs.environment }}" | tr '[A-Z]' '[a-z]' | sed -rn 's/([^[[:digit:]])[^[[:digit:]]*/\1/p')" >> $GITHUB_ENV
+
+      # Extract 'ap-northeast-2', 'eu-west-1' -> 'an2', 'ew1'
+      - name: Extract short region name like 'an2', 'ew1'
+        run: |
+          echo ${{ inputs.environment }} | tr '[A-Z]' '[a-z]'
+          echo "SHORT_REGION=$(echo "${{ inputs.region }}" | sed -rn 's/([^[[:digit:]])[^[[:digit:]]+\-([^[[:digit:]])[^[[:digit:]]+\-([[:digit:]])/\1\2\3/p')" >> $GITHUB_ENV
+
+      # Make taskDefinition name (ex) task-definition-[dev]-[an2].json
+      - name: Make taskDefinition name
+        run: |
+          echo ${{ inputs.environment }} | tr '[A-Z]' '[a-z]'
+          echo ${{ env.SHORT_REGION }}
+          echo "TASK_DEFINITION=task-definition-$(echo ${{ inputs.environment }} | tr '[A-Z]' '[a-z]')-${{ env.SHORT_REGION }}.json" >> $GITHUB_ENV
+
+      # Make registry name
+      # (ex) [1111111111].dkr.ecs.[ap-northeast-2].amazonaws.com
+      # 1. account id from secret variables
+      # 2. full name of AWS region
+      - name: Make registry name
+        run: |
+          echo "ECR_REGISTRY=$(echo ${{ env.ACCOUNT_ID }}.dkr.${{ env.repository_prefix }}.${{ inputs.region }}.amazonaws.com)" >> $GITHUB_ENV
+
+      # Make repository name
+      # (ex) [ecr]-[an2]-[d]-[ggq]-[lol_auth]
+      # 1. repository_prefix
+      # 2. short name of region
+      # 3. short name of environment
+      # 4. product_code
+      # 5. application_code
+      - name: Make repository name
+        run: |
+          echo "ECR_REPOSITORY=$(echo ${{ env.repository_prefix }}-${{ env.SHORT_REGION }}-${{ env.SHORT_ENVIRONMENT }}-${{ inputs.product_code }}-${{ inputs.application_code }})" >> $GITHUB_ENV
+
+      # Make service name
+      # (ex) [ecss]-[an2]-[d]-[ggq]-[lol_auth]
+      # 1. service_prefix
+      # 2. short name of region
+      # 3. short name of environment
+      # 4. product_code
+      # 5. application_code
+      - name: Make service name
+        run: |
+          echo "SERVICE=$(echo ${{ env.service_prefix }}-${{ env.SHORT_REGION }}-${{ env.SHORT_ENVIRONMENT }}-${{ inputs.product_code }}-${{ inputs.application_code }})" >> $GITHUB_ENV
+
+      # Make cluster name
+      # (ex) [ecsc]-[an2]-[d]-[ggq]
+      # 1. cluster_prefix
+      # 2. short name of region
+      # 3. short name of environment
+      # 4. product name code
+      - name: Make cluster name
+        run: |
+          echo "CLUSTER=$(echo ${{ env.cluster_prefix }}-${{ env.SHORT_REGION }}-${{ env.SHORT_ENVIRONMENT }}-${{ inputs.product_code }})" >> $GITHUB_ENV
+
+      # Make s3 bucket for api document name
+      # (ex) [s3]-an2-[d]-master-api-doc/[ggq]-[lol-auth]
+      # 1. s3_prefix
+      # 2. short name of environment
+      # 2. product_code
+      # 3. s3_name
+      - name: Make s3 bucket name for api document
+        run: |
+          if '${{ inputs.environment != 'PROD' }}'
+          then 
+            echo "API_DOC=$(echo ${{ env.s3_prefix }}-an2-${{ env.SHORT_ENVIRONMENT }}-master-api-doc/${{ inputs.s3_api_doc_folder_name }})" >> $GITHUB_ENV
+          fi
+
+      - name: Print information
+        run: |
+          echo ECR_REGISTRY = ${{ env.ECR_REGISTRY }}
+          echo ECR_REPOSITORY = ${{ env.ECR_REPOSITORY }}
+          echo TASK_DEFINITION = ${{ env.TASK_DEFINITION }}
+          echo SERVICE = ${{ env.SERVICE }}
+          echo CLUSTER = ${{ env.CLUSTER }}
+          echo API_DOC = ${{ env.API_DOC }}

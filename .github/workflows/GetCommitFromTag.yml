@@ -1,0 +1,44 @@
+name: GetCommitFromTag
+
+# Tag 이름에서 Commit을 추출하는 Workflow
+# GetCommitFromTag Workflow는 다른 Workflow 에서 호출한다
+# GetCommitFromTag Workflow 호출 시 tag이름을 inputs.tag로 넘겨주어야 한다.
+# GetCommitFromTag Workflow 완료 후 outputs.commit으로 commit을 넘겨준다.
+
+on:
+  workflow_call:
+    outputs:
+      commit:
+        value: ${{ jobs.GetCommitFromTag.outputs.commit }}
+    inputs:
+      tag:
+        type: string
+        required: true
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+
+jobs:
+  GetCommitFromTag:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ env.COMMIT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref_name }}
+          fetch-depth: 0
+
+      - name: Get commit
+        run: |
+          echo "COMMIT=$(git rev-list --max-count=1 ${{ inputs.tag }})" >> $GITHUB_ENV
+
+      - name: Print commit
+        run: |
+          echo TAG = ${{ inputs.tag }}
+          echo COMMIT = ${{ env.COMMIT }}

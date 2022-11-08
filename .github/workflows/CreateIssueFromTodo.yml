@@ -1,0 +1,34 @@
+name: CreateIssueFromTodo
+
+# inputs:
+# repository: Checkout 할 저장소
+# ref_name: Checkout 할 브랜치 이름
+
+on:
+  workflow_call:
+    secrets:
+      TODO_ACTIONS_MONGO_URL:
+        required: true
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+
+jobs:
+  CreateIssuesFromTodos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref_name }}
+
+      - name: todo-actions
+        uses: dtinth/todo-actions@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TODO_ACTIONS_MONGO_URL: ${{ secrets.TODO_ACTIONS_MONGO_URL }}

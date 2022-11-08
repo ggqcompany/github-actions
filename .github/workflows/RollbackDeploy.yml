@@ -1,0 +1,187 @@
+name: RollbackDeploy
+
+# 태그이름으로 Rollback 배포 진행
+# rc 버전 태그일 경우 STG 배포
+# rc 버전 태그가 아닐 경우 PROD 배포
+
+on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID_STG:
+        required: true
+      AWS_SECRET_ACCESS_KEY_STG:
+        required: true
+      AWS_ACCESS_KEY_ID_PROD:
+        required: true
+      AWS_SECRET_ACCESS_KEY_PROD:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+    inputs:
+      tag:
+        type: string
+        required: true
+      # Checkout 시 필요한 Input Data
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+      # AWS 배포 시 필요한 데이터
+      commit:
+        type: string
+        required: true
+      region:
+        type: string
+        required: true
+      account_id_dev:
+        type: string
+        required: true
+      account_id_stg:
+        type: string
+        required: true
+      account_id_prod:
+        type: string
+        required: true
+      product_code:
+        type: string
+        required: true
+      application_code:
+        type: string
+        required: true
+      s3_api_doc_folder_name:
+        type: string
+        required: false
+      # Slack 송신에 필요한 데이터
+      server_name:
+        type: string
+        required: false
+
+jobs:
+  # 입력 받은 tagging이 rc버전이면 STG 환경, 아니면 PROD 환경 배포
+  ExtractEnvironment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ env.ENVIRONMENT }}
+    steps:
+      - name: Extract Environment
+        run: |
+          if '${{ contains(inputs.tag, 'rc') }}'
+          then
+            echo "ENVIRONMENT=STG" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=PROD" >> $GITHUB_ENV
+          fi
+
+      - name: Print environment
+        run: |
+          echo TAG = ${{ inputs.tag }}
+          echo ENVIRONMENT = ${{ env.ENVIRONMENT }}
+
+  # 입력 받은 tag 이름으로 배포할 commit 확인
+  GetCommitFromTag:
+    if: ${{ inputs.tag != '' }}
+    uses: ./.github/workflows/GetCommitFromTag.yml
+    with:
+      tag: ${{ inputs.tag }}
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+
+  # 배포 시 필요한 값 가져오기
+  GetAwsValue:
+    uses: ./.github/workflows/GetAwsValue.yml
+    needs: [ExtractEnvironment]
+    with:
+      environment: ${{ needs.ExtractEnvironment.outputs.environment }}
+      region: ${{ inputs.region }}
+      account_id_dev: ${{ inputs.account_id_dev }}
+      account_id_stg: ${{ inputs.account_id_stg }}
+      account_id_prod: ${{ inputs.account_id_prod }}
+      product_code: ${{ inputs.product_code }}
+      application_code: ${{ inputs.application_code }}
+      s3_api_doc_folder_name: ${{ inputs.s3_api_doc_folder_name }}
+
+  # 입력 받은 tag 가 RC일 경우 STG 배포
+  RollbackDeployToStg:
+    if: ${{ contains(inputs.tag, 'rc') && needs.GetCommitFromTag.outputs.commit != '' }}
+    needs: [ExtractEnvironment, GetCommitFromTag, GetAwsValue]
+    uses: ./.github/workflows/Deploy.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_STG }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_STG }}
+    with:
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+      environment: ${{ needs.ExtractEnvironment.outputs.environment }}
+      region: ${{ inputs.region }}
+      commit: ${{ needs.GetCommitFromTag.outputs.commit }}
+      ecr_registry: ${{ needs.GetAwsValue.outputs.ecr_registry }}
+      ecr_repository: ${{ needs.GetAwsValue.outputs.ecr_repository }}
+      task_definition: ${{ needs.GetAwsValue.outputs.task_definition }}
+      container: ${{ needs.GetAwsValue.outputs.container }}
+      service: ${{ needs.GetAwsValue.outputs.service }}
+      cluster: ${{ needs.GetAwsValue.outputs.cluster }}
+      api_doc: ${{ needs.GetAwsValue.outputs.api_doc }}
+      version: ${{ inputs.tag }}
+
+  # 입력 받은 tag 가 RC가 아닐 경우 PROD 배포
+  RollbackDeployToProd:
+    if: ${{ !contains(inputs.tag, 'rc') && needs.GetCommitFromTag.outputs.commit != '' }}
+    needs: [ExtractEnvironment, GetCommitFromTag, GetAwsValue]
+    uses: ./.github/workflows/Deploy.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+    with:
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+      environment: ${{ needs.ExtractEnvironment.outputs.environment }}
+      region: ${{ inputs.region }}
+      commit: ${{ needs.GetCommitFromTag.outputs.commit }}
+      ecr_registry: ${{ needs.GetAwsValue.outputs.ecr_registry }}
+      ecr_repository: ${{ needs.GetAwsValue.outputs.ecr_repository }}
+      task_definition: ${{ needs.GetAwsValue.outputs.task_definition }}
+      container: ${{ needs.GetAwsValue.outputs.container }}
+      service: ${{ needs.GetAwsValue.outputs.service }}
+      cluster: ${{ needs.GetAwsValue.outputs.cluster }}
+      api_doc: ${{ needs.GetAwsValue.outputs.api_doc }}
+      version: ${{ inputs.tag }}
+
+  NotifyToSlackToSuccess:
+    if: ${{ always() && (needs.RollbackDeployToStg.result == 'success' || needs.RollbackDeployToProd.result == 'success') }}
+    needs:
+      [
+        ExtractEnvironment,
+        GetCommitFromTag,
+        RollbackDeployToStg,
+        RollbackDeployToProd,
+      ]
+    uses: ./.github/workflows/NotifyToSlack.yml
+    secrets: inherit
+    with:
+      server_name: ${{ inputs.server_name }}
+      environment: ${{ needs.ExtractEnvironment.outputs.environment }}
+      version: ${{ inputs.tag }}
+      status: success
+      region: ${{ inputs.region }}
+      commit: ${{ needs.GetCommitFromTag.outputs.commit }}
+
+  NotifyToSlackToFail:
+    if: ${{ always() && (needs.RollbackDeployToStg.result == 'failure' || needs.RollbackDeployToProd.result == 'failure') }}
+    needs:
+      [
+        ExtractEnvironment,
+        GetCommitFromTag,
+        RollbackDeployToStg,
+        RollbackDeployToProd,
+      ]
+    uses: ./.github/workflows/NotifyToSlack.yml
+    secrets: inherit
+    with:
+      server_name: ${{ inputs.server_name }}
+      environment: ${{ needs.ExtractEnvironment.outputs.environment }}
+      version: ${{ inputs.tag }}
+      status: failure
+      region: ${{ inputs.region }}
+      commit: ${{ needs.GetCommitFromTag.outputs.commit }}

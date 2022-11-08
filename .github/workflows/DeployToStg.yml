@@ -1,0 +1,149 @@
+name: DeployToStg
+
+# release/hotfix 브랜치에서 가장 최근의 rc 버전 TAG로 AWS 배포 하는 Workflow
+# BuildAndDeployToStg job에서 container, cluster, service_prefix 를 변경하여 사용하도록 한다.
+
+on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+    inputs:
+      # Checkout 시 필요한 Input Data
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+      # AWS 배포 시 필요한 데이터
+      commit:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      region:
+        type: string
+        required: true
+      account_id_dev:
+        type: string
+        required: true
+      account_id_stg:
+        type: string
+        required: true
+      account_id_prod:
+        type: string
+        required: true
+      product_code:
+        type: string
+        required: true
+      application_code:
+        type: string
+        required: true
+      s3_api_doc_folder_name:
+        type: string
+        required: false
+      # Slack 송신에 필요한 데이터
+      server_name:
+        type: string
+        required: false
+
+jobs:
+  CheckBranch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}';
+          then
+            echo "Valid branch ${{ inputs.ref_name }}"
+          else
+            echo "Invalid branch ${{ inputs.ref_name }}"
+            exit 1
+          fi
+
+  # release/hotfix 브랜치에서 발행된 최신의 rc 태깅을 찾는다.
+  GetLatestTag:
+    if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
+    needs: [CheckBranch]
+    uses: ./.github/workflows/GetLatestTag.yml
+    with:
+      environment: ${{ inputs.environment }}
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+
+  # tag이름으로 배포할 commit 확인
+  GetCommitFromTag:
+    if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
+    uses: ./.github/workflows/GetCommitFromTag.yml
+    needs: [GetLatestTag]
+    with:
+      tag: ${{ needs.GetLatestTag.outputs.tag }}
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+
+  # 배포 시 필요한 값 가져오기
+  GetAwsValue:
+    needs: [CheckBranch]
+    uses: ./.github/workflows/GetAwsValue.yml
+    with:
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      account_id_dev: ${{ inputs.account_id_dev }}
+      account_id_stg: ${{ inputs.account_id_stg }}
+      account_id_prod: ${{ inputs.account_id_prod }}
+      product_code: ${{ inputs.product_code }}
+      application_code: ${{ inputs.application_code }}
+      s3_api_doc_folder_name: ${{ inputs.s3_api_doc_folder_name }}
+
+  # commit id로 STG 배포
+  BuildAndDeployToStg:
+    if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
+    needs: [GetCommitFromTag, GetAwsValue]
+    uses: ./.github/workflows/Deploy.yml
+    secrets: inherit
+    with:
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      commit: ${{ needs.GetCommitFromTag.outputs.commit }}
+      ecr_registry: ${{ needs.GetAwsValue.outputs.ecr_registry }}
+      ecr_repository: ${{ needs.GetAwsValue.outputs.ecr_repository }}
+      task_definition: ${{ needs.GetAwsValue.outputs.task_definition }}
+      container: ${{ needs.GetAwsValue.outputs.container }}
+      service: ${{ needs.GetAwsValue.outputs.service }}
+      cluster: ${{ needs.GetAwsValue.outputs.cluster }}
+      api_doc: ${{ needs.GetAwsValue.outputs.api_doc }}
+      version: ${{ needs.GetLatestTag.outputs.tag }}
+
+  NotifyToSlackToSuccess:
+    if: ${{ success() }}
+    needs: [GetLatestTag, GetCommitFromTag, BuildAndDeployToStg]
+    uses: ./.github/workflows/NotifyToSlack.yml
+    secrets: inherit
+    with:
+      server_name: ${{ inputs.server_name }}
+      environment: ${{ inputs.environment }}
+      version: ${{ needs.GetLatestTag.outputs.tag }}
+      status: success
+      region: ${{ inputs.region }}
+      commit: ${{ needs.GetCommitFromTag.outputs.commit }}
+
+  NotifyToSlackToFail:
+    if: ${{ failure() }}
+    needs: [GetLatestTag, GetCommitFromTag, BuildAndDeployToStg]
+    uses: ./.github/workflows/NotifyToSlack.yml
+    secrets: inherit
+    with:
+      server_name: ${{ inputs.server_name }}
+      environment: ${{ inputs.environment }}
+      version: ${{ needs.GetLatestTag.outputs.tag }}
+      status: failure
+      region: ${{ inputs.region }}
+      commit: ${{ needs.GetCommitFromTag.outputs.commit }}

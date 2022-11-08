@@ -1,0 +1,91 @@
+name: NotifyToSlack
+
+# Slack으로 배포 성공/실패를 알려주는 Workflow
+# NotifyToSlack Workflow는 다른 Workflow 에서 호출한다
+# NotifyToSlack Workflow 호출 시 secrets, inputs 를 넘겨주어야 한다.
+# env의 서버의 이름을 변경하여 사용하도록 한다.
+
+# inputs:
+# server_name: 배포 한 서버 이름
+on:
+  workflow_call:
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
+    inputs:
+      server_name:
+        type: string
+        required: false
+      version:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      status:
+        type: string
+        required: true
+      region:
+        type: string
+        required: true
+      commit:
+        type: string
+        required: false
+
+jobs:
+  NotifyToSlack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send slack
+        uses: 8398a7/action-slack@v3
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
+        if: always()
+        with:
+          status: custom
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+          custom_payload: |
+            {
+              "attachments": [
+                  {
+                   "mrkdwn_in": ["text"],
+                      "color": '${{ inputs.status }}' === 'success' ? 'good' : '${{ inputs.status }}' === 'failure' ? 'danger' : 'warning',
+                      "pretext": `${'${{ inputs.status }}' === 'success' ? '✅' : '⛔'} *${{ inputs.server_name }} 배포 ${'${{ inputs.status }}' === 'success' ? '성공' : '실패'}*`,
+                      "fields": [
+                          {
+                              "title": "repo",
+                              "value": `${process.env.AS_REPO}`,
+                              "short": true
+                          },
+                          {
+                              "title": "version",
+                              "value": `${'${{ inputs.version }}'}`,
+                              "short": true
+                          },
+                          {
+                             "title": "release commit",
+                             "value": `${'${{ inputs.commit }}'}`,
+                             "short": true
+                          },
+                          {
+                             "title": "environment",
+                             "value": `${'${{ inputs.environment }}'}`,
+                             "short": true
+                          },
+                          {
+                             "title": "author",
+                             "value": `${process.env.AS_AUTHOR}`,
+                             "short": true
+                          },
+                          {
+                             "title": "region",
+                             "value": `${'${{ inputs.region }}'}`,
+                             "short": true
+                          },
+                      ],
+                      "footer": `@${process.env.AS_REF} / ${process.env.AS_COMMIT}`,
+                      "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+                  }
+              ]
+            }
+          author_name: GGQ bot

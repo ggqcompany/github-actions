@@ -1,0 +1,158 @@
+name: Deploy
+
+# AWS 배포를 위한 Workflow
+# Deploy Workflow는 다른 Workflow 에서 호출한다
+# Deploy Workflow 호출 시 secrets 값과 inputs 값을 넘겨주어야 한다.
+
+on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+      commit:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      region:
+        type: string
+        required: true
+      ecr_registry:
+        type: string
+        required: true
+      ecr_repository:
+        type: string
+        required: true
+      task_definition:
+        type: string
+        required: true
+      container:
+        type: string
+        required: true
+      service:
+        type: string
+        required: true
+      cluster:
+        type: string
+        required: true
+      api_doc:
+        type: string
+        required: false
+      version:
+        type: string
+        required: false
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print information
+        run: |
+          echo environment = ${{ inputs.environment }}
+          echo repository = ${{ inputs.repository }}
+          echo ref_name = ${{ inputs.ref_name }}
+          echo ecr_registry = ${{ inputs.ecr_registry }}
+          echo ecr_repository = ${{ inputs.ecr_repository }}
+          echo task_definition = ${{ inputs.task_definition }}
+          echo container = ${{ inputs.container }}
+          echo service = ${{ inputs.service }}
+          echo cluster = ${{ inputs.cluster }}
+          echo api_doc = ${{ inputs.api_doc }}
+          echo commit = ${{ inputs.commit }}
+
+      # Extract 'ap-northeast-2', 'eu-west-1' -> 'an2', 'ew1'
+      - name: extract short region name
+        run: |
+          echo "SHORT_REGION=$(echo "${{ inputs.region }}" | sed -rn 's/([^[[:digit:]])[^[[:digit:]]+\-([^[[:digit:]])[^[[:digit:]]+\-([[:digit:]])/\1\2\3/p')" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ inputs.ref_name }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.region }}
+
+      # use redoc-cli-github-action to generate your HTML bundle
+      - name: Create ReDoc html
+        if: ${{ inputs.api_doc != '' }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - if: ${{ inputs.api_doc != '' }}
+        run: |
+          FILE=./src/docs/apis.yaml
+          if [ -f "$FILE" ] 
+          then 
+            echo "$FILE exists."
+            npm install -g redoc-cli
+            redoc-cli bundle -o apis.html $FILE
+          else 
+            echo "$FILE not exists."
+          fi
+
+      - name: Check Result and upload to s3
+        if: ${{ inputs.api_doc != '' }}
+        env:
+          AWS_API_SPEC_BUCKET_NAME: ${{ inputs.api_doc }}
+        run: |
+          FILE=apis.html
+          if [ -f "$FILE" ] 
+          then 
+            echo "$FILE exists."
+            aws s3 cp apis.html s3://$AWS_API_SPEC_BUCKET_NAME/$FILE
+          else 
+            echo "$FILE not exists."
+          fi
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ inputs.ecr_registry }}
+          ECR_REPOSITORY: ${{ inputs.ecr_repository }}
+          IMAGE_TAG: ${{ inputs.commit }}
+          SHORT_REGION: ${{ env.SHORT_REGION }}
+          VERSION: ${{ inputs.version }}
+          ENV: ${{ inputs.environment }}
+        run: |
+          # Build a docker container and
+          # push it to ECR so that it can
+          # be deployed to ECS.
+          docker build --build-arg SHORT_REGION=$SHORT_REGION --build-arg VERSION=$VERSION --build-arg env=$ENV -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
+          echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ inputs.task_definition }}
+          container-name: ${{ inputs.container }}
+          image: ${{ env.IMAGE }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ inputs.service }}
+          cluster: ${{ inputs.cluster }}
+          wait-for-service-stability: true

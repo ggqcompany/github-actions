@@ -1,0 +1,157 @@
+name: SetTagForStg
+
+# release/hotfix 브랜치에서 STG 환경 배포 전 Tag를 생성하기 위한 수동 Workflow
+# hotfix 브랜치면 1.0.0-rc.1+hotfix.yymmdd
+# release 브랜치면 1.0.0-rc.1+yymmdd
+# hotfix/release 브랜치에 Tag 생성 후 생성된 Tag로 서버 배포를 진행한다.
+
+# inputs:
+# repository: Checkout 할 저장소
+# ref_name: Checkout 할 브랜치 이름
+on:
+  workflow_call:
+    secrets:
+      SLACK_TODO_WEBHOOK_URL:
+        required: true
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+
+jobs:
+  CheckBranch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}';
+          then
+            echo "Valid branch ${{ inputs.ref_name }}"
+          else
+            echo "Invalid branch ${{ inputs.ref_name }}"
+            exit 1
+          fi
+
+  # release/hotfix 브랜치에서 가장 최신의 rc버전 태그를 가져온다
+  # 브랜치 명과 동일한 rc 태그만 가져온다.
+  GetLatestRcTag:
+    needs: [CheckBranch]
+    if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
+    uses: ./.github/workflows/GetLatestTag.yml
+    with:
+      environment: STG
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+
+  # release/hotfix 브랜치에서 새로운 RC버전 추출 (기존 rc 버전에서 1 증가 후 태깅)
+  SetTagForStg:
+    if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
+    needs: [GetLatestRcTag]
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ env.TAG }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref_name }}
+          fetch-depth: 0
+
+      - name: Print input values
+        run: |
+          echo branch = ${{ inputs.ref_name }} / current_tag = ${{ needs.GetLatestRcTag.outputs.tag }}
+
+      # 최신 tag에서 rc버전 추출
+      # ex) 1.0.0-rc.33+123456 일 경우 33 추출
+      - if: ${{ needs.GetLatestRcTag.outputs.tag != '' }}
+        name: Extract latest RC tag
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'hotfix/') }}'
+          then
+            echo "LATEST_VERSION=$(echo ${{ needs.GetLatestRcTag.outputs.tag }}) | sed -rn 's/[[:digit:]]{1,3}.[[:digit:]]{1,3}.[[:digit:]]{1,3}-rc.([[:digit:]]*)\+hotfix.[[:digit:]]{6}/\1/p'" >> $GITHUB_ENV
+          else
+            echo "LATEST_VERSION=$(echo ${{ needs.GetLatestRcTag.outputs.tag }}) | sed -rn 's/[[:digit:]]{1,3}.[[:digit:]]{1,3}.[[:digit:]]{1,3}-rc.([[:digit:]]*)\+[[:digit:]]{6}/\1/p'" >> $GITHUB_ENV
+          fi
+
+      - if: ${{ needs.GetLatestRcTag.outputs.tag != '' }}
+        name: Print latest RC tag
+        run: |
+          echo LATEST_VERSION = ${{ env.LATEST_VERSION }}
+
+      # 추출한 rc 버전에서 1 증가, 없을 경우 rc.1로 태깅
+      - name: Extract new RC tag
+        run: |
+          if '${{ env.LATEST_VERSION != '' }}'
+          then
+            echo "NEW_VERSION=$(($(echo ${{ env.LATEST_VERSION }}) + 1))" >> $GITHUB_ENV
+          else
+            echo "NEW_VERSION=1" >> $GITHUB_ENV
+          fi
+
+      - if: ${{ env.NEW_VERSION != '' }}
+        name: Extract new tag
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'hotfix/') }}'
+          then
+            echo "TAG=$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')-rc.${{ env.NEW_VERSION }}+hotfix.$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{6}')" >> $GITHUB_ENV
+          elif '${{ startsWith(inputs.ref_name, 'release/') }}'
+          then
+            echo "TAG=$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')-rc.${{ env.NEW_VERSION }}$(echo '${{ inputs.ref_name }}' | egrep -o '\+[0-9]{6}')" >> $GITHUB_ENV
+          else
+            echo ""
+          fi
+
+      - if: ${{ env.TAG != '' }}
+        name: Print tag name
+        run: |
+          echo TAG = ${{ env.TAG }}
+
+      # release/hotfix 브랜치에서 새로운 RC버전 태깅
+      - if: ${{ env.TAG != '' }}
+        name: Tag commit
+        uses: tvdias/github-tagger@v0.0.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.TAG }}
+
+  ExtractMilestone:
+    needs: [CheckBranch]
+    if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
+    runs-on: ubuntu-latest
+    outputs:
+      milestone: ${{ env.MILESTONE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref_name }}
+
+      - name: Extract Version Name
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'hotfix/') }}'
+          then
+            echo "MILESTONE=$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')+hotfix.$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{6}')" >> $GITHUB_ENV
+          elif '${{ startsWith(inputs.ref_name, 'release/') }}'
+          then
+            echo "MILESTONE=$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\+[0-9]{6}')" >> $GITHUB_ENV
+          else
+            echo ""
+          fi
+
+      - name: Print MILESTONE
+        run: |
+          echo MILESTONE = ${{ env.MILESTONE }}
+
+  ReportIssue:
+    needs: [ExtractMilestone]
+    uses: ./.github/workflows/ReportIssue.yml
+    secrets: inherit
+    with:
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+      milestone: ${{ needs.ExtractMilestone.outputs.milestone }}

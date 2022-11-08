@@ -1,0 +1,55 @@
+name: ReportIssue
+
+# inputs:
+# repository: Checkout 할 저장소
+# ref_name: Checkout 할 브랜치 이름
+
+# outputs:
+# opened_issue_count : Open 되어있는 이슈 갯수
+on:
+  workflow_call:
+    secrets:
+      SLACK_TODO_WEBHOOK_URL:
+        required: true
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+      milestone:
+        type: string
+        required: false
+    outputs:
+      opened_issue_count:
+        value: ${{ jobs.ReportIssue.outputs.opened_issue_count }}
+
+jobs:
+  ReportIssue:
+    runs-on: ubuntu-latest
+    outputs:
+      opened_issue_count: ${{ env.OPENED_ISSUE_COUNT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref_name }}
+
+      - name: Send Issue Result
+        uses: ggqcompany/github-actions-slack@v1
+        id: find-issues
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TODO_WEBHOOK_URL }} # required
+        with:
+          status: report-issue
+          fields: all
+          milestone: ${{ inputs.milestone }}
+
+      - run: |
+          echo "OPENED_ISSUE_COUNT=$(echo '${{ steps.find-issues.outputs.issues }}' | jq '. | length')" >> $GITHUB_ENV
+
+      - name: Print opened issues
+        run: |
+          echo OPENED_ISSUE_COUNT = ${{ env.OPENED_ISSUE_COUNT }}
