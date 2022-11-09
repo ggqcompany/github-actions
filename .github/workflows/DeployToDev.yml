@@ -81,7 +81,7 @@ jobs:
       s3_api_doc_folder_name: ${{ inputs.s3_api_doc_folder_name }}
 
   BuildAndDeployToDev:
-    if: ${{ startsWith(inputs.ref_name, 'feature/') }}
+    if: ${{ startsWith(inputs.ref_name, 'feature/') || startsWith(inputs.ref_name, 'develop')  }}
     uses: ./.github/workflows/Deploy.yml
     needs: [GetAwsValue]
     secrets: inherit
