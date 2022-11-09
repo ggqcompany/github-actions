@@ -54,12 +54,13 @@ jobs:
 | commit                 | 배포하고자 하는 commit                                                                                                       | `9f6be1bf4a6d019d60c376c8e0c7f0b9e7e294c3` |
 | environment            | 배포하고자 하는 환경                                                                                                         | `DEV`, `STG`, `PROD`                       |
 | region                 | 배포하고자 하는 리전                                                                                                         | `ap-northeast-2`                           |
-| account_id_dev         | AWS account id                                                                                                               | `118166980108`                             |
-| account_id_stg         | AWS account id                                                                                                               | `666644083535`                             |
-| account_id_prod        | AWS account id                                                                                                               | `071637104407`                             |
+| account_id_dev         | AWS account id                                                                                                               | `12345678901`                              |
+| account_id_stg         | AWS account id                                                                                                               | `12345678901`                              |
+| account_id_prod        | AWS account id                                                                                                               | `12345678901`                              |
 | product_code           | Product Code ([Naming Convention 참고](https://docs.google.com/document/d/1loswue7bJ2u8h6eDSx0KFk6fhknEel5QKn-Tb96tonQ))     | `ggq`                                      |
 | application_code       | Application Code ([Naming Convention 참고](https://docs.google.com/document/d/1loswue7bJ2u8h6eDSx0KFk6fhknEel5QKn-Tb96tonQ)) | `lol_auth`                                 |
 | s3_api_doc_folder_name | S3 API 문서 bucket 내 doc 폴더 위치                                                                                          | `s3_api_doc_folder_name`                   |
+| server_name            | Slack 노티 시 보여 줄 이름                                                                                                   | `Auth Server`                              |
 
 ### Secrets
 
@@ -109,9 +110,9 @@ jobs:
       commit: ${{ github.sha }}
       environment: ${{ inputs.environment }}
       region: ${{ inputs.region }}
-      account_id_dev: "118166980108"
-      account_id_stg: "666644083535"
-      account_id_prod: "071637104407"
+      account_id_dev: "12345678901"
+      account_id_stg: "12345678901"
+      account_id_prod: "12345678901"
       product_code: ggq
       application_code: lol_auth
       s3_api_doc_folder_name: ggq-lol-auth
@@ -133,12 +134,13 @@ jobs:
 | commit                 | 배포하고자 하는 commit                                                                                                       | `9f6be1bf4a6d019d60c376c8e0c7f0b9e7e294c3` |
 | environment            | 배포하고자 하는 환경                                                                                                         | `DEV`, `STG`, `PROD`                       |
 | region                 | 배포하고자 하는 리전                                                                                                         | `ap-northeast-2`                           |
-| account_id_dev         | AWS account id                                                                                                               | `118166980108`                             |
-| account_id_stg         | AWS account id                                                                                                               | `666644083535`                             |
-| account_id_prod        | AWS account id                                                                                                               | `071637104407`                             |
+| account_id_dev         | AWS account id                                                                                                               | `12345678901`                              |
+| account_id_stg         | AWS account id                                                                                                               | `12345678901`                              |
+| account_id_prod        | AWS account id                                                                                                               | `12345678901`                              |
 | product_code           | Product Code ([Naming Convention 참고](https://docs.google.com/document/d/1loswue7bJ2u8h6eDSx0KFk6fhknEel5QKn-Tb96tonQ))     | `ggq`                                      |
 | application_code       | Application Code ([Naming Convention 참고](https://docs.google.com/document/d/1loswue7bJ2u8h6eDSx0KFk6fhknEel5QKn-Tb96tonQ)) | `lol_auth`                                 |
 | s3_api_doc_folder_name | S3 API 문서 bucket 내 doc 폴더 위치                                                                                          | `s3_api_doc_folder_name`                   |
+| server_name            | Slack 노티 시 보여 줄 이름                                                                                                   | `Auth Server`                              |
 
 ### Secrets
 
@@ -185,9 +187,9 @@ jobs:
       # AWS 배포 시 필요한 데이터
       commit: ${{ github.sha }}
       region: ${{ inputs.region }}
-      account_id_dev: "118166980108"
-      account_id_stg: "666644083535"
-      account_id_prod: "071637104407"
+      account_id_dev: "12345678901"
+      account_id_stg: "12345678901"
+      account_id_prod: "12345678901"
       product_code: ggq
       application_code: lol_auth
       s3_api_doc_folder_name: ggq-lol-auth
