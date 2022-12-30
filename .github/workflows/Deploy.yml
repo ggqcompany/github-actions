@@ -133,11 +133,12 @@ jobs:
           SHORT_REGION: ${{ env.SHORT_REGION }}
           VERSION: ${{ inputs.version }}
           ENV: ${{ inputs.environment }}
+          NPM_TOKEN: ${{ github.token }}
         run: |
           # Build a docker container and
           # push it to ECR so that it can
           # be deployed to ECS.
-          docker build --build-arg SHORT_REGION=$SHORT_REGION --build-arg VERSION=$VERSION --build-arg env=$ENV -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker build --build-arg NPM_TOKEN=$NPM_TOKEN --build-arg SHORT_REGION=$SHORT_REGION --build-arg VERSION=$VERSION --build-arg env=$ENV -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
