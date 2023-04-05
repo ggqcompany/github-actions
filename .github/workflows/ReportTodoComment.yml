@@ -1,0 +1,108 @@
+name: ReportTodoComments
+
+on:
+  workflow_call:
+    secrets:
+      MAIL_USERNAME:
+        required: false
+      MAIL_PASSWORD:
+        required: false
+      NOTIFY_EMAIL_LIST:
+        required: false
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ inputs.ref_name }}
+
+      - name: Install dependencies
+        run: sudo apt-get install -y ripgrep
+
+      - name: Find TODO and FIXME comments
+        run: |
+          echo "### Debug Information"
+          echo "Current directory:"
+          pwd
+          echo "Files in the current directory:"
+          ls -l
+
+          repo_name="$(echo ${{ github.repository }} | cut -d '/' -f 2)"
+          branch_name="$(echo ${{ inputs.ref_name }} | sed 's/refs\/heads\///')"
+          repo_base_url="https://github.com/${{ github.repository }}/blob/${branch_name}"
+
+          echo "# ${repo_name}" > report.md
+          echo "" >> report.md
+          echo "" >> report.md
+          echo "### Daily TODO and FIXME Report" >> report.md
+          echo "" >> report.md
+          echo "| File | Line | Context |" >> report.md
+          echo "| ---- | ---- | ------- |" >> report.md
+
+          echo "### Search Results:"
+          rg --glob '!node_modules/*' --glob '!venv/*' --glob '!*.md' -n -i -e 'TODO' -e 'FIXME' . || true
+
+          rg --glob '!node_modules/*' --glob '!venv/*' --glob '!*.md' -n -i -e 'TODO' -e 'FIXME' . | while IFS= read -r line; do
+              # Extract file, line number, and context
+              file="$(echo "$line" | cut -d ':' -f 1)"
+              line_number="$(echo "$line" | cut -d ':' -f 2)"
+              context="$(echo "$line" | cut -d ':' -f 3-)"
+
+              # Escape special characters for Markdown
+              context_escaped="$(echo "$context" | sed 's/[\*_]/\\&/g')"
+
+              # Create a link to the code location
+              link="${repo_base_url}/${file}#L${line_number}"
+
+              # Append the data as a new row in the Markdown table
+              echo "| [$file]($link) | $line_number | \`$context_escaped\` |" >> report.md
+          done || true
+
+      - name: Check md files
+        run: |
+          ls -al
+          cat report.md
+
+      - name: Converts Markdown to HTML
+        id: report_html
+        uses: jaywcjlove/markdown-to-html-cli@main
+        with:
+          source: report.md
+          output: report.html
+
+      - name: Make email subject
+        run: |
+          echo "EMAIL_SUBJECT=($(echo ${{ github.repository }} | cut -d '/' -f 2)) Daily TODO and FIXME Report" >> $GITHUB_ENV
+
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: email-smtp.ap-northeast-2.amazonaws.com
+          # Server port, default 25:
+          server_port: 465
+          # Optional whether this connection use TLS (default is true if server_port is 465)
+          secure: true
+          # Optional (recommended): mail server username:
+          username: ${{ secrets.MAIL_USERNAME }}
+          # Optional (recommended) mail server password:
+          password: ${{ secrets.MAIL_PASSWORD }}
+          # Required mail subject:
+          subject: ${{ env.EMAIL_SUBJECT }}
+          # Required recipients' addresses using comma(,): a@test.com,b@test.com
+          to: ${{ secrets.NOTIFY_EMAIL_LIST }}
+          # Required sender full name (address can be skipped):
+          from: GGQ DEV <dev@ggq.gg> # <user@example.com>
+          content_type: text/markdown
+          # Optional body:
+          html_body: ${{ steps.report_html.outputs.html }}
