@@ -1,0 +1,83 @@
+name: CreateUnitTestReport
+
+on:
+  workflow_call:
+    secrets:
+      GIT_TOKEN:
+        required: true
+    inputs:
+      repository:
+        type: string
+        required: true
+      path:
+        type: string
+        required: true
+
+jobs:
+  CreateUnitTestReport:
+    # npm registry 수정되면 self-hosted로 변경
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "14"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@ggqcompany"
+          always-auth: true
+
+      - name: Checkout
+        if: success()
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repository }}
+          ref: develop
+          path: ${{ inputs.path }}
+          token: ${{ secrets.GIT_TOKEN }}
+
+      - name: Set npm registry for ggqcompany
+        run: |
+          npm config set @ggqcompany:registry https://npm.pkg.github.com/ && \
+          npm config set -- //npm.pkg.github.com/:_authToken=${{ secrets.GIT_TOKEN }}
+
+      - name: Create environment
+        if: success()
+        run: |
+          ls -al 
+          ls -al ./${{ inputs.path }}
+          echo "WORKING_DIRECTORY=./${{ inputs.path }}" >> $GITHUB_ENV
+
+      - name: Save Coverage
+        if: success()
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        id: coverage
+        with:
+          output: report-markdown
+          working-directory: ${{ env.WORKING_DIRECTORY }}
+          github-token: ${{ secrets.GIT_TOKEN }}
+          annotations: none
+
+      - name: Save coverage report as base64
+        if: success()
+        id: save_report
+        run: |
+          echo "REPORT_BASE64=$(echo '${{ steps.coverage.outputs.report }}' | base64 -w0)" >> $GITHUB_ENV
+
+      - name: Decode base64 coverage report
+        if: success()
+        run: |
+          echo '${{ env.REPORT_BASE64 }}' | base64 -d > coverage.md
+
+      - name: Save failure coverage report
+        if: failure() || cancelled()
+        run: |
+          echo "## Coverage report for \`${{ env.WORKING_DIRECTORY }}\`" > coverage.md
+          echo "" >> coverage.md
+          echo "## 🔴 Test suite run failure 🔴" >> coverage.md
+          echo "Please check unit test 😱😱😱" >> coverage.md
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-report-${{ inputs.path }}
+          path: coverage.md
