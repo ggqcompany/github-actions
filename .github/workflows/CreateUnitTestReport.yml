@@ -15,7 +15,6 @@ on:
 
 jobs:
   CreateUnitTestReport:
-    # npm registry 수정되면 self-hosted로 변경
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v3
