@@ -10,9 +10,6 @@ name: SetTagForStg
 # ref_name: Checkout 할 브랜치 이름
 on:
   workflow_call:
-    secrets:
-      SLACK_TODO_WEBHOOK_URL:
-        required: true
     inputs:
       repository:
         type: string
