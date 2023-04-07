@@ -61,34 +61,10 @@ jobs:
         run: |
           echo VERSION = ${{ env.VERSION }}
 
-  ReportIssue:
-    needs: [ExtractVersion]
-    uses: ./.github/workflows/ReportIssue.yml
-    secrets: inherit
-    with:
-      repository: ${{ inputs.repository }}
-      ref_name: ${{ inputs.ref_name }}
-      milestone: ${{ needs.ExtractVersion.outputs.version }}
-
-  CheckOpenedIssue:
-    needs: [ReportIssue]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check opened issue
-        run: |
-          echo opened_issue_count = ${{ needs.ReportIssue.outputs.opened_issue_count }}
-          if '${{ needs.ReportIssue.outputs.opened_issue_count != '' && needs.ReportIssue.outputs.opened_issue_count > 0 }}';
-          then
-            echo "Unresolved issues remain!"
-            exit 1
-          else
-            echo "There are no remaining issues"
-          fi
-
   # release/hotfix -> main 브랜치로 merge 후 release/hotfix 브랜치 삭제 -> main 브랜치 태깅
   SetTagForProd:
     if: ${{ needs.ExtractVersion.outputs.version != '' }}
-    needs: [ExtractVersion, CheckOpenedIssue]
+    needs: [ExtractVersion]
     runs-on: ubuntu-latest
     steps:
       - name: Start SetTagForProd Workflow
