@@ -2,43 +2,6 @@
 
 GGQ common reusable workflows
 
-## CreateIssueFromTodo
-
-TODO 주석을 찾아 Issue로 변환해주는 Workflow
-
-### Inputs
-
-| name       | description          | required | example                                   |
-| ---------- | -------------------- | -------- | ----------------------------------------- |
-| repository | Caller's repository  | Y        | `ggqcompany/back-node-master-auth-server` |
-| ref_name   | Caller's branch name | Y        | `develop`                                 |
-
-### Secrets
-
-| name                   | description                                |
-| ---------------------- | ------------------------------------------ |
-| TODO_ACTIONS_MONGO_URL | TODO 주석 reference 체크를 위한 몽고DB URL |
-
-### Caller's example
-
-```
-name: CreateIssueFromTodo
-
-on:
-  push:
-    branches:
-      - "develop"
-
-jobs:
-  CreateIssueFromTodo:
-    uses: ggqcompany/github-actions/.github/workflows/CreateIssueFromTodo.yml@main
-    secrets: inherit
-    with:
-      repository: ${{ github.repository }}
-      ref_name: ${{ github.ref_name }}
-
-```
-
 ## DeployToDev, DeployToStg, DeployToProd
 
 - DeployToDev : DEV 환경으로 배포, `feature`, `develop` 브랜치만 허용
@@ -198,44 +161,6 @@ jobs:
 
 ```
 
-## ReportIssue
-
-Open 되어있는 Issue를 Slack으로 알려주는 Workflow
-
-### Inputs
-
-| name       | description          | required | example                                   |
-| ---------- | -------------------- | -------- | ----------------------------------------- |
-| repository | Caller's repository  | Y        | `ggqcompany/back-node-master-auth-server` |
-| ref_name   | Caller's branch name | Y        | `develop`                                 |
-| milestone  | Target milestone     | N        | `1.0.0+123456`                            |
-
-### Secrets
-
-| name                   | description                                 |
-| ---------------------- | ------------------------------------------- |
-| SLACK_TODO_WEBHOOK_URL | Open 된 Issue 노티를 위한 Slack webhook URL |
-
-### Caller's example
-
-```
-name: ReportIssue
-
-# cron: https://crontab.guru/
-# 이 크론은 매주 월요일 한국 시간 9시 30분(AM)에 실행됩니다.
-on:
-  schedule:
-    - cron: 30 0 * * 1
-
-jobs:
-  ReportIssue:
-    uses: ggqcompany/github-actions/.github/workflows/ReportIssue.yml@main
-    secrets: inherit
-    with:
-      repository: ${{ github.repository }}
-      ref_name: ${{ github.ref_name }}
-```
-
 ## SetTagForStg, SetTagForProd
 
 - SetTagForStg : `release`, `hotfix` branch에 rc버전 태깅
@@ -268,3 +193,51 @@ jobs:
       repository: ${{ github.repository }}
       ref_name: ${{ github.ref_name }}
 ```
+
+## ReportTodoComment
+
+`TODO`와 `FIXME` 코멘트를 찾아 메일로 송신하는 Workflow
+
+### Inputs
+
+| name       | description          | required | example                                   |
+| ---------- | -------------------- | -------- | ----------------------------------------- |
+| repository | Caller's repository  | Y        | `ggqcompany/back-node-master-auth-server` |
+| ref_name   | Caller's branch name | Y        | `develop`                                 |
+
+### Secrets
+
+| name              | description                                                               |
+| ----------------- | ------------------------------------------------------------------------- |
+| MAIL_USERNAME     | mail server username                                                      |
+| MAIL_PASSWORD     | mail server password                                                      |
+| NOTIFY_EMAIL_LIST | 메일 수신처 콤마(,)로 구분 ex. `kyeongmin.kang@ggq.gg,seungmin.ha@ggq.gg` |
+
+### Caller's example
+
+```
+name: ReportTodoComments
+
+on:
+    workflow_dispatch:
+
+    # cron: https://crontab.guru/
+    # 이 크론은 매주 월요일 한국 시간 9시 30분(AM)에 실행됩니다.
+    schedule:
+        - cron: 30 0 * * 1
+
+jobs:
+    ReportTodoComments:
+        uses: ggqcompany/github-actions/.github/workflows/ReportTodoComment.yml@main
+        secrets: inherit
+        with:
+            # Checkout 시 필요한 Input Data
+            repository: ${{ github.repository }}
+            ref_name: ${{ github.ref_name }}
+```
+
+## ReportUnitTest
+
+Workflow 내 지정된 `Repository`의 Unit Test Coverage를 송신하는 Workflow
+
+`github-actions` Repository에서 자체적으로 수행하며 다른 Workflow에서 사용할 수 없다.
