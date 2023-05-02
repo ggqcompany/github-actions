@@ -1,0 +1,80 @@
+name: SetTagForProdOnRelease
+
+# release/hotfix 브랜치에서 PROD 환경 배포 Tag를 생성하기 위한 수동 Workflow
+# hotfix 브랜치면 1.0.0+hotfix.yymmdd
+# release 브랜치면 1.0.0+yymmdd
+
+# inputs:
+# repository: Checkout 할 저장소
+# ref_name: Checkout 할 브랜치 이름
+on:
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+
+jobs:
+  CheckBranch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}';
+          then
+            echo "Valid branch ${{ inputs.ref_name }}"
+          else
+            echo "Invalid branch ${{ inputs.ref_name }}"
+            exit 1
+          fi
+
+  # release/hotfix 브랜치에서 배포 버전 추출
+  # hotfix 브랜치면 1.0.0+hotfix.yymmdd
+  # release 브랜치면 1.0.0+yymmdd
+  ExtractVersion:
+    needs: [CheckBranch]
+    if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ env.VERSION }}
+    steps:
+      - name: Extract Version Name
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'hotfix/') }}'
+          then
+            echo "VERSION=$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')+hotfix.$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{6}')" >> $GITHUB_ENV
+          elif '${{ startsWith(inputs.ref_name, 'release/') }}'
+          then
+            echo "VERSION=$(echo '${{ inputs.ref_name }}' | egrep -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\+[0-9]{6}')" >> $GITHUB_ENV
+          else
+            echo ""
+          fi
+
+      - name: Print Version
+        run: |
+          echo VERSION = ${{ env.VERSION }}
+
+  # release/hotfix -> main 브랜치로 merge 후 release/hotfix 브랜치 삭제 -> main 브랜치 태깅
+  SetTagForProd:
+    if: ${{ needs.ExtractVersion.outputs.version != '' }}
+    needs: [ExtractVersion]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref_name }}
+
+      # github release 등록
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.ExtractVersion.outputs.version }}
+          release_name: ${{ needs.ExtractVersion.outputs.version }}
