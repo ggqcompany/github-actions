@@ -52,6 +52,10 @@ on:
       server_name:
         type: string
         required: false
+      # LOL Default Platform
+      platform:
+        type: string
+        required: false
 
 jobs:
   CheckBranch:
@@ -99,3 +103,4 @@ jobs:
       cluster: ${{ needs.GetAwsValue.outputs.cluster }}
       api_doc: ${{ needs.GetAwsValue.outputs.api_doc }}
       version: ${{ inputs.ref_name }}
+      platform: ${{ inputs.platform }}
