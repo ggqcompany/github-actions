@@ -57,6 +57,10 @@ on:
       server_name:
         type: string
         required: false
+      # LOL Default Platform
+      platform:
+        type: string
+        required: false
 
 jobs:
   # 입력 받은 tagging이 rc버전이면 STG 환경, 아니면 PROD 환경 배포
@@ -147,6 +151,7 @@ jobs:
       cluster: ${{ needs.GetAwsValue.outputs.cluster }}
       api_doc: ${{ needs.GetAwsValue.outputs.api_doc }}
       version: ${{ inputs.tag }}
+      platform: ${{ inputs.platform }}
 
   NotifyToSlackToSuccess:
     if: ${{ always() && (needs.RollbackDeployToStg.result == 'success' || needs.RollbackDeployToProd.result == 'success') }}
