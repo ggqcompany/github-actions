@@ -54,6 +54,9 @@ on:
       platform:
         type: string
         required: false
+      use_cache:
+        type: string
+        required: false
 
 jobs:
   Deploy:
@@ -73,6 +76,7 @@ jobs:
           echo api_doc = ${{ inputs.api_doc }}
           echo commit = ${{ inputs.commit }}
           echo platform = ${{ inputs.platform }}
+          echo useCache = ${{ inputs.use_cache }}
 
       # Extract 'ap-northeast-2', 'eu-west-1' -> 'an2', 'ew1'
       - name: extract short region name
@@ -80,7 +84,7 @@ jobs:
           echo "SHORT_REGION=$(echo "${{ inputs.region }}" | sed -rn 's/([^[[:digit:]])[^[[:digit:]]+\-([^[[:digit:]])[^[[:digit:]]+\-([[:digit:]])/\1\2\3/p')" >> $GITHUB_ENV
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
           ref: ${{ inputs.ref_name }}
@@ -125,11 +129,33 @@ jobs:
             echo "$FILE not exists."
           fi
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      # build-push-action 사용
+      - name: Build and push With Cache
+        if: ${{ inputs.use_cache != '' }}
+        uses: docker/build-push-action@v5
+        id: build-push
+        with:
+          context: .
+          push: true
+          tags: ${{ inputs.ecr_registry }}/${{ inputs.ecr_repository }}:latest,${{ inputs.ecr_registry }}/${{ inputs.ecr_repository }}:${{ inputs.commit }}
+          build-args: |
+            NPM_TOKEN=${{ github.token }}
+            SHORT_REGION=${{ env.SHORT_REGION }}
+            VERSION=${{ inputs.version }}
+            env=${{ inputs.environment }}
+            platform=${{ inputs.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Build, tag, and push image to Amazon ECR
+        if: ${{ inputs.use_cache == '' }}
         env:
           ECR_REGISTRY: ${{ inputs.ecr_registry }}
           ECR_REPOSITORY: ${{ inputs.ecr_repository }}
@@ -139,12 +165,20 @@ jobs:
           ENV: ${{ inputs.environment }}
           NPM_TOKEN: ${{ github.token }}
           PLATFORM: ${{ inputs.platform }}
+          CONTAINER: ${{ inputs.container }}
         run: |
           # Build a docker container and
           # push it to ECR so that it can
           # be deployed to ECS.
-          docker build --build-arg NPM_TOKEN=$NPM_TOKEN --build-arg SHORT_REGION=$SHORT_REGION --build-arg VERSION=$VERSION --build-arg env=$ENV --build-arg platform=$PLATFORM -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
+          docker buildx build \
+          --build-arg NPM_TOKEN=$NPM_TOKEN \
+          --build-arg SHORT_REGION=$SHORT_REGION \
+          --build-arg VERSION=$VERSION \
+          --build-arg env=$ENV \
+          --build-arg platform=$platform \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push .
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Fill in the new image ID in the Amazon ECS task definition
@@ -153,7 +187,7 @@ jobs:
         with:
           task-definition: ${{ inputs.task_definition }}
           container-name: ${{ inputs.container }}
-          image: ${{ env.IMAGE }}
+          image: ${{ inputs.ecr_registry }}/${{ inputs.ecr_repository }}:${{ inputs.commit }}
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
