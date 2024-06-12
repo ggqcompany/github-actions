@@ -56,6 +56,10 @@ on:
       platform:
         type: string
         required: false
+      # 캐시 사용 여부
+      use_cache:
+        type: string
+        required: false
 
 jobs:
   CheckBranch:
@@ -104,3 +108,4 @@ jobs:
       api_doc: ${{ needs.GetAwsValue.outputs.api_doc }}
       version: ${{ inputs.ref_name }}
       platform: ${{ inputs.platform }}
+      use_cache: ${{ inputs.use_cache }}
