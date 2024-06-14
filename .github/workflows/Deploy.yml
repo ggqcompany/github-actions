@@ -175,7 +175,7 @@ jobs:
           --build-arg SHORT_REGION=$SHORT_REGION \
           --build-arg VERSION=$VERSION \
           --build-arg env=$ENV \
-          --build-arg platform=$platform \
+          --build-arg platform=$PLATFORM \
           -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
           --push .
