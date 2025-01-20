@@ -1,0 +1,93 @@
+name: DeployOciToDev
+
+# feature 브랜치에서 DEV 환경에 배포 필요 시 수동으로 Workflow를 수행한다.
+# 대상 feature 브랜치의 최신 commit으로 배포
+
+on:
+  workflow_call:
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
+    inputs:
+      # Checkout 시 필요한 데이터
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+      # OCI 배포 시 필요한 데이터
+      commit:
+        type: string
+        required: true
+      npm_token:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      region:
+        type: string
+        required: true
+      server_code:
+        type: string
+        required: true
+      # Slack 송신에 필요한 데이터
+      server_name:
+        type: string
+        required: false
+      # LOL Default Platform
+      platform:
+        type: string
+        required: false
+      # 캐시 사용 여부
+      use_cache:
+        type: string
+        required: false
+
+jobs:
+  CheckBranch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch
+        run: |
+          if '${{ startsWith(inputs.ref_name, 'feature/') || startsWith(inputs.ref_name, 'develop') }}';
+          then
+            echo "Valid branch ${{ inputs.ref_name }}"
+          else
+            echo "Invalid branch ${{ inputs.ref_name }}"
+            exit 1
+          fi
+
+  GetOciValue:
+    needs: [CheckBranch]
+    uses: ./.github/workflows/GetOciValue.yml
+    with:
+      region: ${{ inputs.region }}
+      environment: ${{ inputs.environment }}
+      server_code: ${{ inputs.server_code }}
+
+  BuildAndDeployToDev:
+    if: ${{ startsWith(inputs.ref_name, 'feature/') || startsWith(inputs.ref_name, 'develop')  }}
+    uses: ./.github/workflows/DeployOci.yml
+    needs: [GetOciValue]
+    secrets: inherit
+    with:
+      repository: ${{ inputs.repository }}
+      ref_name: ${{ inputs.ref_name }}
+      npm_token: ${{ inputs.npm_token }}
+      environment: ${{ inputs.environment }}
+      oci_region: ${{ inputs.region }}
+      server_code: ${{ inputs.server_code }}
+      platform: ${{ inputs.platform }}
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
+      oci_registry_username: ${{ needs.GetOciValue.outputs.oci_registry_username }}
+      oci_registry_password: ${{ needs.GetOciValue.outputs.oci_registry_password }}
+      oci_registry: ${{ needs.GetOciValue.outputs.oci_registry }}
+      oci_repository: ${{ needs.GetOciValue.outputs.oci_repository }}
+      oci_config: ${{ needs.GetOciValue.outputs.oci_config }}
+      oci_passphrase: ${{ needs.GetOciValue.outputs.oci_passphrase }}
+      oci_oke_ocid: ${{ needs.GetOciValue.outputs.oci_oke_ocid }}
+      oci_region_key: ${{ needs.GetOciValue.outputs.oci_region_key }}
+      deployment: ${{ needs.GetOciValue.outputs.deployment }}
