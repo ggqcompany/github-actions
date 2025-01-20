@@ -1,7 +1,6 @@
-name: DeployToStg
+name: DeployOciToProd
 
-# release/hotfix 브랜치에서 가장 최근의 rc 버전 TAG로 AWS 배포 하는 Workflow
-# BuildAndDeployToStg job에서 container, cluster, service_prefix 를 변경하여 사용하도록 한다.
+# Main 브랜치에서 가장 최근의 TAG로 AWS 배포 하는 Workflow
 
 on:
   workflow_call:

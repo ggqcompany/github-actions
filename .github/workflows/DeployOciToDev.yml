@@ -1,4 +1,4 @@
-name: DeployToDev
+name: DeployOciToDev
 
 # feature 브랜치에서 DEV 환경에 배포 필요 시 수동으로 Workflow를 수행한다.
 # 대상 feature 브랜치의 최신 commit으로 배포
