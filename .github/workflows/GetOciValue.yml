@@ -14,7 +14,7 @@ on:
       environment:
         type: string
         required: true
-      server_name:
+      server_code:
         type: string
         required: true
     outputs:
@@ -83,7 +83,7 @@ jobs:
       # Make repository name (ex) ocr-[icn]-[d]-ggq-[lol-desktop]
       - name: Make repository name
         run: |
-          echo "OCI_REPOSITORY=ocr-${{ env.OCI_REGION_KEY }}-${{ env.SHORT_ENVIRONMENT }}-ggq-${{ inputs.server_name }}" >> $GITHUB_ENV
+          echo "OCI_REPOSITORY=ocr-${{ env.OCI_REGION_KEY }}-${{ env.SHORT_ENVIRONMENT }}-ggq-${{ inputs.server_code }}" >> $GITHUB_ENV
 
       # Make deployment name (ex) deployment-[dev]-[icn].yaml
       - name: Make deployment name

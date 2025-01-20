@@ -52,7 +52,7 @@ on:
       deployment:
         type: string
         required: true
-      server_name:
+      server_code:
         type: string
         required: true
       platform:
@@ -82,7 +82,7 @@ jobs:
           echo oci_region = ${{ inputs.oci_region }}
           echo oci_region_key = ${{ inputs.oci_region_key }}
           echo deployment = ${{ inputs.deployment }}
-          echo server_name = ${{ inputs.server_name }}
+          echo server_code = ${{ inputs.server_code }}
           echo platform = ${{ inputs.platform }}
           echo version = ${{ inputs.version }}
 
@@ -157,5 +157,5 @@ jobs:
         run: |
           export IMAGE_TAG=${{ inputs.commit }}
           kubectl apply -f ./${{ inputs.deployment }}.yaml
-          kubectl rollout restart deployment/${{ inputs.server_name }}
+          kubectl rollout restart deployment/${{ inputs.server_code }}
           kubectl get services -o wide

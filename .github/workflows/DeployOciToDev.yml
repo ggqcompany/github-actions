@@ -29,6 +29,9 @@ on:
       region:
         type: string
         required: true
+      server_code:
+        type: string
+        required: true
       # Slack 송신에 필요한 데이터
       server_name:
         type: string
@@ -62,7 +65,7 @@ jobs:
     with:
       region: ${{ inputs.region }}
       environment: ${{ inputs.environment }}
-      server_name: ${{ inputs.server_name }}
+      server_code: ${{ inputs.server_code }}
 
   BuildAndDeployToDev:
     if: ${{ startsWith(inputs.ref_name, 'feature/') || startsWith(inputs.ref_name, 'develop')  }}
@@ -75,7 +78,7 @@ jobs:
       npm_token: ${{ inputs.npm_token }}
       environment: ${{ inputs.environment }}
       oci_region: ${{ inputs.region }}
-      server_name: ${{ inputs.server_name }}
+      server_code: ${{ inputs.server_code }}
       platform: ${{ inputs.platform }}
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
