@@ -51,7 +51,7 @@ jobs:
     steps:
       - name: Check branch
         run: |
-          if '${{ startsWith(inputs.ref_name, 'feature/') || startsWith(inputs.ref_name, 'develop') }}';
+          if '${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}';
           then
             echo "Valid branch ${{ inputs.ref_name }}"
           else
