@@ -1,0 +1,148 @@
+name: GetOciValue
+
+# OCI 배포를 위해 필요한 값을 구하는 Workflow
+# 개발자는 아래 env 값을 확인하고 필요 시 수정해주어야 한다.
+# Backend OCI Naming Convention 을 참고하여 input 값을 넘겨주어야 한다.
+# link:
+
+on:
+  workflow_call:
+    inputs:
+      region:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      server_name:
+        type: string
+        required: true
+    outputs:
+      oci_registry_username:
+        value: ${{ jobs.GetOciValue.outputs.oci_registry_username }}
+      oci_registry_password:
+        value: ${{ jobs.GetOciValue.outputs.oci_registry_password }}
+      oci_registry:
+        value: ${{ jobs.GetOciValue.outputs.oci_registry }}
+      oci_repository:
+        value: ${{ jobs.GetOciValue.outputs.oci_repository }}
+      oci_config:
+        value: ${{ jobs.GetOciValue.outputs.oci_config }}
+      oci_passphrase:
+        value: ${{ jobs.GetOciValue.outputs.oci_passphrase }}
+      oci_oke_ocid:
+        value: ${{ jobs.GetOciValue.outputs.oci_oke_ocid }}
+      oci_region_key:
+        value: ${{ jobs.GetOciValue.outputs.oci_region_key }}
+      deployment:
+        value: ${{ jobs.GetOciValue.outputs.deployment }}
+
+jobs:
+  GetOciValue:
+    runs-on: ubuntu-latest
+    outputs:
+      oci_registry_username: ${{ env.OCI_REGISTRY_USERNAME }}
+      oci_registry_password: ${{ env.OCI_REGISTRY_PASSWORD }}
+      oci_registry: ${{ env.OCI_REGISTRY }}
+      oci_repository: ${{ env.OCI_REPOSITORY }}
+      oci_config: ${{ env.OCI_CONFIG }}
+      oci_passphrase: ${{ env.OCI_PASSPHRASE }}
+      oci_oke_ocid: ${{ env.OCI_OKE_OCID }}
+      oci_region_key: ${{ env.OCI_REGION_KEY }}
+      deployment: ${{ env.DEPLOYMENT }}
+
+    steps:
+      # region 추가시 변경 필요
+      # (ex) ap-seoul-1 -> icn
+      - name: Get Oci Region Key & Secret
+        run: |
+          if '${{ inputs.region == 'ap-seoul-1' }}'
+          then
+            echo "OCI_REGION_KEY=icn" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_NAMESPACE }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_ICN_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
+            echo "OCI_CONFIG=${{ secrets.OCI_ICN_CONFIG }}" >> $GITHUB_ENV
+            echo "OCI_PASSPHRASE=${{ secrets.OCI_ICN_PASSPHRASE }}" >> $GITHUB_ENV
+          elif '${{ inputs.region == 'us-sanjose-1' }}'
+          then
+            echo "OCI_REGION_KEY=sjc" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_SJC_NAMESPACE }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_SJC_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
+            echo "OCI_CONFIG=${{ secrets.OCI_SJC_CONFIG }}" >> $GITHUB_ENV
+            echo "OCI_PASSPHRASE=${{ secrets.OCI_SJC_PASSPHRASE }}" >> $GITHUB_ENV
+          else
+            echo "Invalid region ${{ inputs.region }}"
+            exit 1
+          fi
+
+      # Extract 'DEV', 'STG', 'PROD' -> 'd', 's', 'p'
+      - name: Extract short environment name like 'd', 's', 'p'
+        run: |
+          echo "SHORT_ENVIRONMENT=$(echo "${{ inputs.environment }}" | tr '[A-Z]' '[a-z]' | sed -rn 's/([^[[:digit:]])[^[[:digit:]]*/\1/p')" >> $GITHUB_ENV
+
+      # Make repository name (ex) ocr-[icn]-[d]-ggq-[lol-desktop]
+      - name: Make repository name
+        run: |
+          echo "OCI_REPOSITORY=ocr-${{ env.OCI_REGION_KEY }}-${{ env.SHORT_ENVIRONMENT }}-ggq-${{ inputs.server_name }}" >> $GITHUB_ENV
+
+      # Make deployment name (ex) deployment-[dev]-[icn].yaml
+      - name: Make deployment name
+        run: |
+          echo ${{ inputs.environment }} | tr '[A-Z]' '[a-z]'
+          echo "DEPLOYMENT=deployment-$(echo ${{ inputs.environment }} | tr '[A-Z]' '[a-z]')-${{ env.OCI_REGION_KEY }}.yaml" >> $GITHUB_ENV
+
+      # Make registry name
+      # (ex) [icn].ocir.io
+      - name: Make registry name
+        run: |
+          echo "OCI_REGISTRY=$(echo ${{ env.oci_region_key }}.ocir.io)" >> $GITHUB_ENV
+
+      # region 추가시 변경 필요
+      - name: Get Oci Kubernetes Cluster Ocid
+        run: |
+          if '${{ inputs.region == 'ap-seoul-1' }}'
+          then
+            if '${{ inputs.environment == 'DEV'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_DEV }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'STG'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_STG }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'PROD'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_PROD }}" >> $GITHUB_ENV
+            else
+              echo "Invalid environment ${{ inputs.environment }}"
+              exit 1
+            fi
+          elif '${{ inputs.region == 'us-sanjose-1' }}'
+          then
+            if '${{ inputs.environment == 'DEV'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_DEV }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'STG'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_STG }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'PROD'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_PROD }}" >> $GITHUB_ENV
+            else
+              echo "Invalid environment ${{ inputs.environment }}"
+              exit 1
+            fi
+          else
+            echo "Invalid region ${{ inputs.region }}"
+            exit 1
+          fi
+
+      - name: Print information
+        run: |
+          echo OCI_REGISTRY_USERNAME = ${{ env.OCI_REGISTRY_USERNAME }}
+          echo OCI_REGISTRY_PASSWORD = ${{ env.OCI_REGISTRY_PASSWORD }}
+          echo OCI_REGISTRY = ${{ env.OCI_REGISTRY }}
+          echo OCI_REPOSITORY = ${{ env.OCI_REPOSITORY }}
+          echo OCI_CONFIG = ${{ env.OCI_CONFIG }}
+          echo OCI_PASSPHRASE = ${{ env.OCI_PASSPHRASE }}
+          echo OCI_OKE_OCID = ${{ env.OCI_OKE_OCID }}
+          echo OCI_REGION_KEY = ${{ env.OCI_REGION_KEY }}
+          echo DEPLOYMENT = ${{ env.DEPLOYMENT }}

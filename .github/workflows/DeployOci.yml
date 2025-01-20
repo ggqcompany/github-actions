@@ -1,0 +1,161 @@
+name: DeployOci
+
+# OCI 배포를 위한 Workflow
+# Deploy Workflow는 다른 Workflow 에서 호출한다
+# Deploy Workflow 호출 시 secrets 값과 inputs 값을 넘겨주어야 한다.
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        required: true
+      ref_name:
+        type: string
+        required: true
+      commit:
+        type: string
+        required: true
+      oci_registry_username:
+        type: string
+        required: true
+      oci_registry_password:
+        type: string
+        required: true
+      oci_registry:
+        type: string
+        required: true
+      oci_repository:
+        type: string
+        required: true
+      npm_token:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: true
+      oci_config:
+        type: string
+        required: true
+      oci_passphrase:
+        type: string
+        required: true
+      oci_oke_ocid:
+        type: string
+        required: true
+      oci_region:
+        type: string
+        required: true
+      oci_region_key:
+        type: string
+        required: true
+      deployment:
+        type: string
+        required: true
+      server_name:
+        type: string
+        required: true
+      platform:
+        type: string
+        required: false
+      version:
+        type: string
+        required: false
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print information
+        run: |
+          echo repository = ${{ inputs.repository }}
+          echo ref_name = ${{ inputs.ref_name }}
+          echo oci_registry_username = ${{ inputs.oci_registry_username }}
+          echo oci_registry_password = ${{ inputs.oci_registry_password }}
+          echo oci_registry = ${{ inputs.oci_registry }}
+          echo oci_repository = ${{ inputs.oci_repository }}
+          echo npm_token = ${{ inputs.npm_token }}
+          echo environment = ${{ inputs.environment }}
+          echo oci_config = ${{ inputs.oci_config }}
+          echo oci_passphrase = ${{ inputs.oci_passphrase }}
+          echo oci_oke_ocid = ${{ inputs.oci_oke_ocid }}
+          echo oci_region = ${{ inputs.oci_region }}
+          echo oci_region_key = ${{ inputs.oci_region_key }}
+          echo deployment = ${{ inputs.deployment }}
+          echo server_name = ${{ inputs.server_name }}
+          echo platform = ${{ inputs.platform }}
+          echo version = ${{ inputs.version }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ inputs.ref_name }}
+
+      - name: Login to OCI Registry
+        uses: docker/login-action@v1
+        with:
+          username: ${{ inputs.oci_registry_username }}
+          password: ${{ inputs.oci_registry_password }}
+          registry: ${{ inputs.oci_registry }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push to OCI Registry
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: ${{ inputs.oci_registry }}/${{ inputs.oci_registry_username }}/${{ inputs.oci_repository }}:latest
+          build-args: |
+            NPM_TOKEN=${{ github.token }}
+            ENVIRONMENT=${{ inputs.environment }}
+            VERSION=${{ inputs.version }}
+            env=${{ inputs.environment }}
+            platform=${{ inputs.platform }}
+            SHORT_REGION=${{ inputs.oci_region_key }}
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
+
+      # Runs a set of commands using the runners shell
+      - name: "Write Config & Key Files"
+        run: |
+          mkdir ~/.oci
+          echo "${{ inputs.oci_config }}" >> ~/.oci/config 
+          echo "${{ inputs.oci_passphrase }}" >> ~/.oci/key.pem
+
+      - name: "Install OCI CLI"
+        run: |
+          curl -L -O https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
+          chmod +x install.sh
+          ./install.sh --accept-all-defaults
+          echo "::add-path::/home/runner/bin"
+          exec -l $SHELL
+
+      - name: "Fix Config File Permissions"
+        run: |
+          oci setup repair-file-permissions --file ~/.oci/key.pem
+          oci setup repair-file-permissions --file ~/.oci/config
+
+      - name: "Download the KUBECONFIG"
+        run: |
+          mkdir -p ~/.kube
+          oci ce cluster create-kubeconfig --cluster-id ${{ inputs.oci_oke_ocid }} --file ~/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
+          export KUBECONFIG=~/.kube/config
+
+      - name: Debug file structure
+        run: |
+          pwd
+          ls -R
+
+      - name: "Deploy the API on OKE"
+        run: |
+          export IMAGE_TAG=${{ inputs.commit }}
+          kubectl apply -f ./${{ inputs.deployment }}.yaml
+          kubectl rollout restart deployment/${{ inputs.server_name }}
+          kubectl get services -o wide
