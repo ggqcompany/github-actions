@@ -17,25 +17,25 @@ on:
       OCI_ICN_PASSPHRASE:
         required: true
       OCI_SJC_NAMESPACE:
-        required: true
+        required: false
       OCI_SJC_REGISTRY_PASSWORD:
-        required: true
+        required: false
       OCI_SJC_CONFIG:
-        required: true
+        required: false
       OCI_SJC_PASSPHRASE:
-        required: true
+        required: false
       OCI_ICN_OKE_OCID_DEV:
         required: true
       OCI_ICN_OKE_OCID_STG:
-        required: true
+        required: false
       OCI_ICN_OKE_OCID_PROD:
-        required: true
+        required: false
       OCI_SJC_OKE_OCID_DEV:
-        required: true
+        required: false
       OCI_SJC_OKE_OCID_STG:
-        required: true
+        required: false
       OCI_SJC_OKE_OCID_PROD:
-        required: true
+        required: false
     inputs:
       region:
         type: string
