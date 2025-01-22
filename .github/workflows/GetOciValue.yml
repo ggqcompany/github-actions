@@ -37,6 +37,9 @@ on:
       deployment:
         value: ${{ jobs.GetOciValue.outputs.deployment }}
 
+permissions:
+  secrets: read
+
 jobs:
   GetOciValue:
     runs-on: ubuntu-latest
