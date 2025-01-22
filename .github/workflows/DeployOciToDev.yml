@@ -115,8 +115,6 @@ jobs:
       oci_registry_password: ${{ needs.GetOciValue.outputs.oci_registry_password }}
       oci_registry: ${{ needs.GetOciValue.outputs.oci_registry }}
       oci_repository: ${{ needs.GetOciValue.outputs.oci_repository }}
-      oci_config: ${{ needs.GetOciValue.outputs.oci_config }}
-      oci_passphrase: ${{ needs.GetOciValue.outputs.oci_passphrase }}
       oci_oke_ocid: ${{ needs.GetOciValue.outputs.oci_oke_ocid }}
       oci_region_key: ${{ needs.GetOciValue.outputs.oci_region_key }}
       deployment: ${{ needs.GetOciValue.outputs.deployment }}

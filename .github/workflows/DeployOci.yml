@@ -34,12 +34,6 @@ on:
       environment:
         type: string
         required: true
-      oci_config:
-        type: string
-        required: true
-      oci_passphrase:
-        type: string
-        required: true
       oci_oke_ocid:
         type: string
         required: true
@@ -121,13 +115,6 @@ jobs:
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
-
-      # Runs a set of commands using the runners shell
-      - name: "Write Config & Key Files"
-        run: |
-          mkdir ~/.oci
-          echo "${{ inputs.oci_config }}" >> ~/.oci/config 
-          echo "${{ inputs.oci_passphrase }}" >> ~/.oci/key.pem
 
       - name: "Install OCI CLI"
         run: |

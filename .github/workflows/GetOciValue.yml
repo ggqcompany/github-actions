@@ -55,10 +55,6 @@ on:
         value: ${{ jobs.GetOciValue.outputs.oci_registry }}
       oci_repository:
         value: ${{ jobs.GetOciValue.outputs.oci_repository }}
-      oci_config:
-        value: ${{ jobs.GetOciValue.outputs.oci_config }}
-      oci_passphrase:
-        value: ${{ jobs.GetOciValue.outputs.oci_passphrase }}
       oci_oke_ocid:
         value: ${{ jobs.GetOciValue.outputs.oci_oke_ocid }}
       oci_region_key:
@@ -74,8 +70,6 @@ jobs:
       oci_registry_password: ${{ env.OCI_REGISTRY_PASSWORD }}
       oci_registry: ${{ env.OCI_REGISTRY }}
       oci_repository: ${{ env.OCI_REPOSITORY }}
-      oci_config: ${{ env.OCI_CONFIG }}
-      oci_passphrase: ${{ env.OCI_PASSPHRASE }}
       oci_oke_ocid: ${{ env.OCI_OKE_OCID }}
       oci_region_key: ${{ env.OCI_REGION_KEY }}
       deployment: ${{ env.DEPLOYMENT }}
@@ -85,20 +79,21 @@ jobs:
       # (ex) ap-seoul-1 -> icn
       - name: Get Oci Region Key & Secret
         run: |
+          mkdir ~/.oci
           if '${{ inputs.region == 'ap-seoul-1' }}'
           then
             echo "OCI_REGION_KEY=icn" >> $GITHUB_ENV
             echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_NAMESPACE }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_ICN_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
-            echo "OCI_CONFIG=${{ secrets.OCI_ICN_CONFIG }}" >> $GITHUB_ENV
-            echo "OCI_PASSPHRASE=${{ secrets.OCI_ICN_PASSPHRASE }}" >> $GITHUB_ENV
+            echo "${{ secrets.OCI_ICN_CONFIG }}" >> ~/.oci/config
+            echo "${{ secrets.OCI_ICN_PASSPHRASE }}" >> ~/.oci/key.pem
           elif '${{ inputs.region == 'us-sanjose-1' }}'
           then
             echo "OCI_REGION_KEY=sjc" >> $GITHUB_ENV
             echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_SJC_NAMESPACE }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_SJC_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
-            echo "OCI_CONFIG=${{ secrets.OCI_SJC_CONFIG }}" >> $GITHUB_ENV
-            echo "OCI_PASSPHRASE=${{ secrets.OCI_SJC_PASSPHRASE }}" >> $GITHUB_ENV
+            echo "${{ secrets.OCI_SJC_CONFIG }}" >> ~/.oci/config
+            echo "${{ secrets.OCI_SJC_PASSPHRASE }}" >> ~/.oci/key.pem
           else
             echo "Invalid region ${{ inputs.region }}"
             exit 1
@@ -170,8 +165,6 @@ jobs:
           echo OCI_REGISTRY_PASSWORD = ${{ env.OCI_REGISTRY_PASSWORD }}
           echo OCI_REGISTRY = ${{ env.OCI_REGISTRY }}
           echo OCI_REPOSITORY = ${{ env.OCI_REPOSITORY }}
-          echo OCI_CONFIG = ${{ env.OCI_CONFIG }}
-          echo OCI_PASSPHRASE = ${{ env.OCI_PASSPHRASE }}
           echo OCI_OKE_OCID = ${{ env.OCI_OKE_OCID }}
           echo OCI_REGION_KEY = ${{ env.OCI_REGION_KEY }}
           echo DEPLOYMENT = ${{ env.DEPLOYMENT }}
