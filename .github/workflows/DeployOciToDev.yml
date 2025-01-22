@@ -6,6 +6,34 @@ name: DeployOciToDev
 on:
   workflow_call:
     secrets:
+      OCI_ICN_NAMESPACE:
+        required: true
+      OCI_ICN_REGISTRY_PASSWORD:
+        required: true
+      OCI_ICN_CONFIG:
+        required: true
+      OCI_ICN_PASSPHRASE:
+        required: true
+      OCI_SJC_NAMESPACE:
+        required: true
+      OCI_SJC_REGISTRY_PASSWORD:
+        required: true
+      OCI_SJC_CONFIG:
+        required: true
+      OCI_SJC_PASSPHRASE:
+        required: true
+      OCI_ICN_OKE_OCID_DEV:
+        required: true
+      OCI_ICN_OKE_OCID_STG:
+        required: true
+      OCI_ICN_OKE_OCID_PROD:
+        required: true
+      OCI_SJC_OKE_OCID_DEV:
+        required: true
+      OCI_SJC_OKE_OCID_STG:
+        required: true
+      OCI_SJC_OKE_OCID_PROD:
+        required: true
       SLACK_WEBHOOK_URL:
         required: true
     inputs:
@@ -62,6 +90,7 @@ jobs:
   GetOciValue:
     needs: [CheckBranch]
     uses: ./.github/workflows/GetOciValue.yml
+    secrets: inherit
     with:
       region: ${{ inputs.region }}
       environment: ${{ inputs.environment }}

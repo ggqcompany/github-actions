@@ -7,6 +7,35 @@ name: GetOciValue
 
 on:
   workflow_call:
+    secrets:
+      OCI_ICN_NAMESPACE:
+        required: true
+      OCI_ICN_REGISTRY_PASSWORD:
+        required: true
+      OCI_ICN_CONFIG:
+        required: true
+      OCI_ICN_PASSPHRASE:
+        required: true
+      OCI_SJC_NAMESPACE:
+        required: true
+      OCI_SJC_REGISTRY_PASSWORD:
+        required: true
+      OCI_SJC_CONFIG:
+        required: true
+      OCI_SJC_PASSPHRASE:
+        required: true
+      OCI_ICN_OKE_OCID_DEV:
+        required: true
+      OCI_ICN_OKE_OCID_STG:
+        required: true
+      OCI_ICN_OKE_OCID_PROD:
+        required: true
+      OCI_SJC_OKE_OCID_DEV:
+        required: true
+      OCI_SJC_OKE_OCID_STG:
+        required: true
+      OCI_SJC_OKE_OCID_PROD:
+        required: true
     inputs:
       region:
         type: string
@@ -36,9 +65,6 @@ on:
         value: ${{ jobs.GetOciValue.outputs.oci_region_key }}
       deployment:
         value: ${{ jobs.GetOciValue.outputs.deployment }}
-
-permissions:
-  secrets: read
 
 jobs:
   GetOciValue:
