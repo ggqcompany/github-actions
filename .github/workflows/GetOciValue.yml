@@ -119,7 +119,7 @@ jobs:
       # (ex) [icn].ocir.io
       - name: Make registry name
         run: |
-          echo "OCI_REGISTRY=$(echo ${{ env.oci_region_key }}.ocir.io)" >> $GITHUB_ENV
+          echo "OCI_REGISTRY=${{ env.OCI_REGION_KEY }}.ocir.io" >> $GITHUB_ENV
 
       # region 추가시 변경 필요
       - name: Get Oci Kubernetes Cluster Ocid
