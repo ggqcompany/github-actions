@@ -161,10 +161,10 @@ jobs:
 
       - name: Print information
         run: |
-          echo OCI_REGISTRY_USERNAME = ${{ env.OCI_REGISTRY_USERNAME }}
-          echo OCI_REGISTRY_PASSWORD = ${{ env.OCI_REGISTRY_PASSWORD }}
-          echo OCI_REGISTRY = ${{ env.OCI_REGISTRY }}
-          echo OCI_REPOSITORY = ${{ env.OCI_REPOSITORY }}
-          echo OCI_OKE_OCID = ${{ env.OCI_OKE_OCID }}
-          echo OCI_REGION_KEY = ${{ env.OCI_REGION_KEY }}
-          echo DEPLOYMENT = ${{ env.DEPLOYMENT }}
+          echo "OCI_REGISTRY_USERNAME = '${{ env.OCI_REGISTRY_USERNAME }}'"
+          echo "OCI_REGISTRY_PASSWORD = '${{ env.OCI_REGISTRY_PASSWORD }}'"
+          echo "OCI_REGISTRY = '${{ env.OCI_REGISTRY }}'"
+          echo "OCI_REPOSITORY = '${{ env.OCI_REPOSITORY }}'"
+          echo "OCI_OKE_OCID = '${{ env.OCI_OKE_OCID }}'"
+          echo "OCI_REGION_KEY = '${{ env.OCI_REGION_KEY }}'"
+          echo "DEPLOYMENT = '${{ env.DEPLOYMENT }}'"
