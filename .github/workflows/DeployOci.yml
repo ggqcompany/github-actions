@@ -6,6 +6,35 @@ name: DeployOci
 
 on:
   workflow_call:
+    secrets:
+      OCI_ICN_NAMESPACE:
+        required: true
+      OCI_ICN_REGISTRY_PASSWORD:
+        required: true
+      OCI_ICN_CONFIG:
+        required: true
+      OCI_ICN_PASSPHRASE:
+        required: true
+      OCI_SJC_NAMESPACE:
+        required: false
+      OCI_SJC_REGISTRY_PASSWORD:
+        required: false
+      OCI_SJC_CONFIG:
+        required: false
+      OCI_SJC_PASSPHRASE:
+        required: false
+      OCI_ICN_OKE_OCID_DEV:
+        required: true
+      OCI_ICN_OKE_OCID_STG:
+        required: false
+      OCI_ICN_OKE_OCID_PROD:
+        required: false
+      OCI_SJC_OKE_OCID_DEV:
+        required: false
+      OCI_SJC_OKE_OCID_STG:
+        required: false
+      OCI_SJC_OKE_OCID_PROD:
+        required: false
     inputs:
       repository:
         type: string
@@ -14,12 +43,6 @@ on:
         type: string
         required: true
       commit:
-        type: string
-        required: true
-      oci_registry_username:
-        type: string
-        required: true
-      oci_registry_password:
         type: string
         required: true
       oci_registry:
@@ -32,9 +55,6 @@ on:
         type: string
         required: true
       environment:
-        type: string
-        required: true
-      oci_oke_ocid:
         type: string
         required: true
       oci_region:
@@ -64,15 +84,10 @@ jobs:
         run: |
           echo repository = ${{ inputs.repository }}
           echo ref_name = ${{ inputs.ref_name }}
-          echo oci_registry_username = ${{ inputs.oci_registry_username }}
-          echo oci_registry_password = ${{ inputs.oci_registry_password }}
           echo oci_registry = ${{ inputs.oci_registry }}
           echo oci_repository = ${{ inputs.oci_repository }}
           echo npm_token = ${{ inputs.npm_token }}
           echo environment = ${{ inputs.environment }}
-          echo oci_config = ${{ inputs.oci_config }}
-          echo oci_passphrase = ${{ inputs.oci_passphrase }}
-          echo oci_oke_ocid = ${{ inputs.oci_oke_ocid }}
           echo oci_region = ${{ inputs.oci_region }}
           echo oci_region_key = ${{ inputs.oci_region_key }}
           echo deployment = ${{ inputs.deployment }}
@@ -86,11 +101,57 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ inputs.ref_name }}
 
+      - name: SetValue
+        run: |
+          mkdir ~/.oci
+          if '${{ inputs.region == 'ap-seoul-1' }}'
+          then
+            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_NAMESPACE }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_ICN_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
+            echo "${{ secrets.OCI_ICN_CONFIG }}" >> ~/.oci/config
+            echo "${{ secrets.OCI_ICN_PASSPHRASE }}" >> ~/.oci/key.pem
+            if '${{ inputs.environment == 'DEV'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_DEV }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'STG'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_STG }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'PROD'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_PROD }}" >> $GITHUB_ENV
+            else
+              echo "Invalid environment ${{ inputs.environment }}"
+              exit 1
+            fi
+          elif '${{ inputs.region == 'us-sanjose-1' }}'
+          then
+            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_SJC_NAMESPACE }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_SJC_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
+            echo "${{ secrets.OCI_SJC_CONFIG }}" >> ~/.oci/config
+            echo "${{ secrets.OCI_SJC_PASSPHRASE }}" >> ~/.oci/key.pem
+            if '${{ inputs.environment == 'DEV'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_DEV }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'STG'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_STG }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'PROD'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_PROD }}" >> $GITHUB_ENV
+            else
+              echo "Invalid environment ${{ inputs.environment }}"
+              exit 1
+            fi
+          else
+            echo "Invalid region ${{ inputs.region }}"
+            exit 1
+          fi
+
       - name: Login to OCI Registry
         uses: docker/login-action@v1
         with:
-          username: ${{ inputs.oci_registry_username }}
-          password: ${{ inputs.oci_registry_password }}
+          username: ${{ env.OCI_REGISTRY_USERNAME }}
+          password: ${{ env.OCI_REGISTRY_PASSWORD }}
           registry: ${{ inputs.oci_registry }}
 
       - name: Set up Docker Buildx
@@ -132,7 +193,7 @@ jobs:
       - name: "Download the KUBECONFIG"
         run: |
           mkdir -p ~/.kube
-          oci ce cluster create-kubeconfig --cluster-id ${{ inputs.oci_oke_ocid }} --file ~/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
+          oci ce cluster create-kubeconfig --cluster-id ${{ env.OCI_OKE_OCID }} --file ~/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
           export KUBECONFIG=~/.kube/config
 
       - name: Debug file structure

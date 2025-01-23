@@ -111,10 +111,7 @@ jobs:
       platform: ${{ inputs.platform }}
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
-      oci_registry_username: ${{ needs.GetOciValue.outputs.oci_registry_username }}
-      oci_registry_password: ${{ needs.GetOciValue.outputs.oci_registry_password }}
       oci_registry: ${{ needs.GetOciValue.outputs.oci_registry }}
       oci_repository: ${{ needs.GetOciValue.outputs.oci_repository }}
-      oci_oke_ocid: ${{ needs.GetOciValue.outputs.oci_oke_ocid }}
       oci_region_key: ${{ needs.GetOciValue.outputs.oci_region_key }}
       deployment: ${{ needs.GetOciValue.outputs.deployment }}
