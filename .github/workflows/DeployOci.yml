@@ -210,6 +210,6 @@ jobs:
       - name: "Deploy the API on OKE"
         run: |
           export IMAGE_TAG=${{ inputs.commit }}
-          kubectl apply -f ./${{ inputs.deployment }}.yaml
+          kubectl apply -f ./${{ inputs.deployment }}
           kubectl rollout restart deployment/${{ inputs.server_code }}
           kubectl get services -o wide
