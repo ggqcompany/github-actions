@@ -9,6 +9,8 @@ on:
     secrets:
       OCI_ICN_NAMESPACE:
         required: true
+      OCI_ICN_REGISTRY_USERNAME:
+        required: true
       OCI_ICN_REGISTRY_PASSWORD:
         required: true
       OCI_ICN_CONFIG:
@@ -16,6 +18,8 @@ on:
       OCI_ICN_PASSPHRASE:
         required: true
       OCI_SJC_NAMESPACE:
+        required: false
+      OCI_SJC_REGISTRY_USERNAME:
         required: false
       OCI_SJC_REGISTRY_PASSWORD:
         required: false
@@ -106,7 +110,7 @@ jobs:
           mkdir ~/.oci
           if '${{ inputs.region == 'ap-seoul-1' }}'
           then
-            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_NAMESPACE }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_REGISTRY_USERNAME }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_ICN_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
             echo "${{ secrets.OCI_ICN_CONFIG }}" >> ~/.oci/config
             echo "${{ secrets.OCI_ICN_PASSPHRASE }}" >> ~/.oci/key.pem
@@ -125,7 +129,7 @@ jobs:
             fi
           elif '${{ inputs.region == 'us-sanjose-1' }}'
           then
-            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_SJC_NAMESPACE }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_SJC_REGISTRY_USERNAME }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_SJC_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
             echo "${{ secrets.OCI_SJC_CONFIG }}" >> ~/.oci/config
             echo "${{ secrets.OCI_SJC_PASSPHRASE }}" >> ~/.oci/key.pem
@@ -165,7 +169,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: true
-          tags: ${{ inputs.oci_registry }}/${{ inputs.oci_registry_username }}/${{ inputs.oci_repository }}:latest
+          tags: ${{ inputs.oci_registry }}/${{ secrets.OCI_SJC_NAMESPACE }}/${{ inputs.oci_repository }}:latest
           build-args: |
             NPM_TOKEN=${{ github.token }}
             ENVIRONMENT=${{ inputs.environment }}

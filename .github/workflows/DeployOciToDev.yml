@@ -8,6 +8,8 @@ on:
     secrets:
       OCI_ICN_NAMESPACE:
         required: true
+      OCI_ICN_REGISTRY_USERNAME:
+        required: true
       OCI_ICN_REGISTRY_PASSWORD:
         required: true
       OCI_ICN_CONFIG:
@@ -15,6 +17,8 @@ on:
       OCI_ICN_PASSPHRASE:
         required: true
       OCI_SJC_NAMESPACE:
+        required: false
+      OCI_SJC_REGISTRY_USERNAME:
         required: false
       OCI_SJC_REGISTRY_PASSWORD:
         required: false
