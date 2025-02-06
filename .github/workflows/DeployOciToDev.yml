@@ -6,6 +6,38 @@ name: DeployOciToDev
 on:
   workflow_call:
     secrets:
+      OCI_ICN_NAMESPACE:
+        required: true
+      OCI_ICN_REGISTRY_USERNAME:
+        required: true
+      OCI_ICN_REGISTRY_PASSWORD:
+        required: true
+      OCI_ICN_CONFIG:
+        required: true
+      OCI_ICN_PASSPHRASE:
+        required: true
+      OCI_SJC_NAMESPACE:
+        required: false
+      OCI_SJC_REGISTRY_USERNAME:
+        required: false
+      OCI_SJC_REGISTRY_PASSWORD:
+        required: false
+      OCI_SJC_CONFIG:
+        required: false
+      OCI_SJC_PASSPHRASE:
+        required: false
+      OCI_ICN_OKE_OCID_DEV:
+        required: false
+      OCI_ICN_OKE_OCID_STG:
+        required: true
+      OCI_ICN_OKE_OCID_PROD:
+        required: false
+      OCI_SJC_OKE_OCID_DEV:
+        required: false
+      OCI_SJC_OKE_OCID_STG:
+        required: false
+      OCI_SJC_OKE_OCID_PROD:
+        required: false
       SLACK_WEBHOOK_URL:
         required: true
     inputs:
@@ -62,6 +94,7 @@ jobs:
   GetOciValue:
     needs: [CheckBranch]
     uses: ./.github/workflows/GetOciValue.yml
+    secrets: inherit
     with:
       region: ${{ inputs.region }}
       environment: ${{ inputs.environment }}
@@ -82,12 +115,7 @@ jobs:
       platform: ${{ inputs.platform }}
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
-      oci_registry_username: ${{ needs.GetOciValue.outputs.oci_registry_username }}
-      oci_registry_password: ${{ needs.GetOciValue.outputs.oci_registry_password }}
       oci_registry: ${{ needs.GetOciValue.outputs.oci_registry }}
       oci_repository: ${{ needs.GetOciValue.outputs.oci_repository }}
-      oci_config: ${{ needs.GetOciValue.outputs.oci_config }}
-      oci_passphrase: ${{ needs.GetOciValue.outputs.oci_passphrase }}
-      oci_oke_ocid: ${{ needs.GetOciValue.outputs.oci_oke_ocid }}
       oci_region_key: ${{ needs.GetOciValue.outputs.oci_region_key }}
       deployment: ${{ needs.GetOciValue.outputs.deployment }}
