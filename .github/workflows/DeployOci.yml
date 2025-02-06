@@ -107,14 +107,14 @@ jobs:
 
       - name: SetValue
         run: |
-          mkdir ~/.oci
+          mkdir -p $HOME/.oci
           if '${{ inputs.region == 'ap-seoul-1' }}'
           then
             echo "OCI_NAMESPACE=${{ secrets.OCI_ICN_NAMESPACE }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_REGISTRY_USERNAME }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_ICN_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
-            echo "${{ secrets.OCI_ICN_CONFIG }}" >> ~/.oci/config
-            echo "${{ secrets.OCI_ICN_PASSPHRASE }}" >> ~/.oci/key.pem
+            echo "${{ secrets.OCI_ICN_CONFIG }}" >> $HOME/.oci/config
+            echo "${{ secrets.OCI_ICN_PASSPHRASE }}" >> $HOME/.oci/key.pem
             if '${{ inputs.environment == 'DEV'}}'
             then
               echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_DEV }}" >> $GITHUB_ENV
@@ -193,18 +193,18 @@ jobs:
 
       - name: "Check OCI Key File Exists"
         run: |
-          ls -al ~/.oci/
+          ls -al $HOME/.oci/
 
       - name: "Fix Config File Permissions"
         run: |
-          oci setup repair-file-permissions --file ~/.oci/key.pem
-          oci setup repair-file-permissions --file ~/.oci/config
+          oci setup repair-file-permissions --file $HOME/.oci/key.pem
+          oci setup repair-file-permissions --file $HOME/.oci/config
 
       - name: "Download the KUBECONFIG"
         run: |
-          mkdir -p ~/.kube
-          oci ce cluster create-kubeconfig --cluster-id ${{ env.OCI_OKE_OCID }} --file ~/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
-          export KUBECONFIG=~/.kube/config
+          mkdir -p $HOME/.kube
+          oci ce cluster create-kubeconfig --cluster-id ${{ env.OCI_OKE_OCID }} --file $HOME/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
+          export KUBECONFIG=$HOME/.kube/config
 
       - name: Debug file structure
         run: |
