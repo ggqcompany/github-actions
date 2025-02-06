@@ -107,14 +107,14 @@ jobs:
 
       - name: SetValue
         run: |
-          mkdir -p $HOME/.oci
+          mkdir -p ~/.oci
           if '${{ inputs.region == 'ap-seoul-1' }}'
           then
             echo "OCI_NAMESPACE=${{ secrets.OCI_ICN_NAMESPACE }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_REGISTRY_USERNAME }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_ICN_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
-            echo "${{ secrets.OCI_ICN_CONFIG }}" >> $HOME/.oci/config
-            echo "${{ secrets.OCI_ICN_PASSPHRASE }}" >> $HOME/.oci/key.pem
+            echo "${{ secrets.OCI_ICN_CONFIG }}" >> ~/.oci/config
+            echo "${{ secrets.OCI_ICN_PASSPHRASE }}" >> ~/.oci/key.pem
             if '${{ inputs.environment == 'DEV'}}'
             then
               echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_DEV }}" >> $GITHUB_ENV
@@ -187,20 +187,20 @@ jobs:
         run: |
           curl -L -O https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
           chmod +x install.sh
-          ./install.sh --accept-all-defaults
+          ./install.sh --oci-cli-version 3.51.5 --accept-all-defaults
           echo "/home/runner/bin" >> $GITHUB_PATH
           exec -l $SHELL
 
       - name: "Fix Config File Permissions"
         run: |
-          chmod 600 $HOME/.oci/key.pem
-          chmod 600 $HOME/.oci/config
+          oci setup repair-file-permissions --file ~/.oci/config
+          oci setup repair-file-permissions --file ~/.oci/key.pem
 
       - name: "Download the KUBECONFIG"
         run: |
-          mkdir -p $HOME/.kube
-          oci ce cluster create-kubeconfig --cluster-id ${{ env.OCI_OKE_OCID }} --file $HOME/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
-          export KUBECONFIG=$HOME/.kube/config
+          mkdir -p ~/.kube
+          oci ce cluster create-kubeconfig --cluster-id ${{ env.OCI_OKE_OCID }} --file ~/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
+          export KUBECONFIG=~/.kube/config
 
       - name: Debug file structure
         run: |
