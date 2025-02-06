@@ -193,9 +193,8 @@ jobs:
 
       - name: "Fix Config File Permissions"
         run: |
-          ls -al $HOME/.oci/
-          oci setup repair-file-permissions --file $HOME/.oci/key.pem
-          oci setup repair-file-permissions --file $HOME/.oci/config
+          chmod 600 $HOME/.oci/key.pem
+          chmod 600 $HOME/.oci/config
 
       - name: "Download the KUBECONFIG"
         run: |
