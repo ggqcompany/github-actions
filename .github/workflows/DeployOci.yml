@@ -191,12 +191,9 @@ jobs:
           echo "/home/runner/bin" >> $GITHUB_PATH
           exec -l $SHELL
 
-      - name: "Check OCI Key File Exists"
-        run: |
-          ls -al $HOME/.oci/
-
       - name: "Fix Config File Permissions"
         run: |
+          ls -al $HOME/.oci/
           oci setup repair-file-permissions --file $HOME/.oci/key.pem
           oci setup repair-file-permissions --file $HOME/.oci/config
 
