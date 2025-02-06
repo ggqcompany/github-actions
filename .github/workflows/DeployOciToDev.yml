@@ -27,9 +27,9 @@ on:
       OCI_SJC_PASSPHRASE:
         required: false
       OCI_ICN_OKE_OCID_DEV:
-        required: true
-      OCI_ICN_OKE_OCID_STG:
         required: false
+      OCI_ICN_OKE_OCID_STG:
+        required: true
       OCI_ICN_OKE_OCID_PROD:
         required: false
       OCI_SJC_OKE_OCID_DEV:

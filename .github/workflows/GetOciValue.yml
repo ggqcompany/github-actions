@@ -51,16 +51,10 @@ on:
         type: string
         required: true
     outputs:
-      oci_registry_username:
-        value: ${{ jobs.GetOciValue.outputs.oci_registry_username }}
-      oci_registry_password:
-        value: ${{ jobs.GetOciValue.outputs.oci_registry_password }}
       oci_registry:
         value: ${{ jobs.GetOciValue.outputs.oci_registry }}
       oci_repository:
         value: ${{ jobs.GetOciValue.outputs.oci_repository }}
-      oci_oke_ocid:
-        value: ${{ jobs.GetOciValue.outputs.oci_oke_ocid }}
       oci_region_key:
         value: ${{ jobs.GetOciValue.outputs.oci_region_key }}
       deployment:
