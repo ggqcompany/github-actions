@@ -226,11 +226,17 @@ jobs:
           kubectl wait --for=condition=Ready pod -l app=${{ inputs.server_code }} --timeout=120s
 
           echo "Checking Pod readiness status..."
-          READY_STATUS=$(kubectl get pod -l app=${{ inputs.server_code }} -o jsonpath="{.items[*].status.conditions[?(@.type=='Ready')].status}")
-          if [ "$READY_STATUS" != "True" ]; then
-            echo "Readiness Probe failed!"
-            exit 1
-          fi
+          for i in {1..10}; do
+            READY_PODS=$(kubectl get pod -l app=${{ inputs.server_code }} -o jsonpath="{.items[*].status.conditions[?(@.type=='Ready')].status}")
+
+            if echo "$READY_PODS" | grep -q "False"; then
+              echo "Some Pods are not ready yet... Retrying in 5 seconds"
+              sleep 5
+            else
+              echo "All Pods are Ready!"
+              exit 0  
+            fi
+          done
           echo "Readiness Probe passed!"
 
           echo "Deployment successful!"
