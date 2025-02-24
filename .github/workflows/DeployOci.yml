@@ -234,9 +234,10 @@ jobs:
               sleep 5
             else
               echo "All Pods are Ready!"
+              echo "Deployment successful!"
               exit 0  
             fi
           done
-          echo "Readiness Probe passed!"
 
-          echo "Deployment successful!"
+          echo "Readiness Probe failed!"
+          exit 1
