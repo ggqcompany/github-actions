@@ -222,6 +222,9 @@ jobs:
           echo "Waiting for Deployment to be ready..."
           kubectl rollout status deployment/${{ inputs.server_code }} --timeout=120s
 
+          echo "Waiting for all pods in deployment to be ready..."
+          kubectl wait --for=condition=Ready pod -l app=${{ inputs.server_code }} --timeout=120s
+
           echo "Checking Pod readiness status..."
           READY_STATUS=$(kubectl get pod -l app=${{ inputs.server_code }} -o jsonpath="{.items[*].status.conditions[?(@.type=='Ready')].status}")
           if [ "$READY_STATUS" != "True" ]; then
