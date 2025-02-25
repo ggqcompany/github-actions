@@ -209,7 +209,35 @@ jobs:
 
       - name: "Deploy the API on OKE"
         run: |
+          set -e  # 에러 발생 시 즉시 종료
+
           export IMAGE_TAG=${{ inputs.commit }}
+
+          echo "Applying Deployment..."
           kubectl apply -f ./${{ inputs.deployment }}
+
+          echo "Restarting Deployment..."
           kubectl rollout restart deployment/${{ inputs.server_code }}
-          kubectl get services -o wide
+
+          echo "Waiting for Deployment to be ready..."
+          kubectl rollout status deployment/${{ inputs.server_code }} --timeout=120s
+
+          echo "Waiting for all pods in deployment to be ready..."
+          kubectl wait --for=condition=Ready pod -l app=${{ inputs.server_code }} --timeout=120s
+
+          echo "Checking Pod readiness status..."
+          for i in {1..10}; do
+            READY_PODS=$(kubectl get pod -l app=${{ inputs.server_code }} -o jsonpath="{.items[*].status.conditions[?(@.type=='Ready')].status}")
+
+            if echo "$READY_PODS" | grep -q "False"; then
+              echo "Some Pods are not ready yet... Retrying in 5 seconds"
+              sleep 5
+            else
+              echo "All Pods are Ready!"
+              echo "Deployment successful!"
+              exit 0  
+            fi
+          done
+
+          echo "Readiness Probe failed!"
+          exit 1
