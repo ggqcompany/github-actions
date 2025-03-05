@@ -223,7 +223,7 @@ jobs:
           kubectl rollout status deployment/${{ inputs.server_code }} --timeout=300s
 
           echo "Waiting for all pods in deployment to be ready..."
-          kubectl wait --for=condition=Ready pod -l app=${{ inputs.server_code }} --timeout=300s
+          kubectl wait --for=condition=Ready pod -l app=${{ inputs.server_code }} --field-selector=status.phase=Running --timeout=300s
 
           echo "Checking Pod readiness status..."
           for i in {1..20}; do
