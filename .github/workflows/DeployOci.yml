@@ -108,7 +108,7 @@ jobs:
       - name: SetValue
         run: |
           mkdir -p ~/.oci
-          if '${{ inputs.region == 'ap-seoul-1' }}'
+          if '${{ inputs.oci_region == 'ap-seoul-1' }}'
           then
             echo "OCI_NAMESPACE=${{ secrets.OCI_ICN_NAMESPACE }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_ICN_REGISTRY_USERNAME }}" >> $GITHUB_ENV
@@ -128,7 +128,7 @@ jobs:
               echo "Invalid environment ${{ inputs.environment }}"
               exit 1
             fi
-          elif '${{ inputs.region == 'us-sanjose-1' }}'
+          elif '${{ inputs.oci_region == 'us-sanjose-1' }}'
           then
             echo "OCI_NAMESPACE=${{ secrets.OCI_SJC_NAMESPACE }}" >> $GITHUB_ENV
             echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_SJC_REGISTRY_USERNAME }}" >> $GITHUB_ENV
@@ -149,7 +149,7 @@ jobs:
               exit 1
             fi
           else
-            echo "Invalid region ${{ inputs.region }}"
+            echo "Invalid region ${{ inputs.oci_region }}"
             exit 1
           fi
 
