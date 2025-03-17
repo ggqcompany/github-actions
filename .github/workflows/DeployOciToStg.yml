@@ -123,11 +123,11 @@ jobs:
   BuildAndDeployToStg:
     if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
     uses: ./.github/workflows/DeployOci.yml
-    needs: [GetCommitFromTag, GetOciValue]
+    needs: [GetLatestTag, GetCommitFromTag, GetOciValue]
     secrets: inherit
     with:
       repository: ${{ inputs.repository }}
-      ref_name: ${{ inputs.ref_name }}
+      ref_name: ${{ needs.GetLatestTag.outputs.tag }}
       npm_token: ${{ inputs.npm_token }}
       environment: ${{ inputs.environment }}
       oci_region: ${{ inputs.region }}
