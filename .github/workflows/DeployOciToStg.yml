@@ -123,11 +123,12 @@ jobs:
   BuildAndDeployToStg:
     if: ${{ startsWith(inputs.ref_name, 'release/') || startsWith(inputs.ref_name, 'hotfix/') }}
     uses: ./.github/workflows/DeployOci.yml
-    needs: [GetCommitFromTag, GetOciValue]
+    needs: [GetLatestTag, GetCommitFromTag, GetOciValue]
     secrets: inherit
     with:
       repository: ${{ inputs.repository }}
       ref_name: ${{ inputs.ref_name }}
+      deploy_ref: ${{ needs.GetLatestTag.outputs.tag }} # 해당 branch의 최신 tag를 배포
       npm_token: ${{ inputs.npm_token }}
       environment: ${{ inputs.environment }}
       oci_region: ${{ inputs.region }}
