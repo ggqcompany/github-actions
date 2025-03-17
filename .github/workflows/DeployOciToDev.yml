@@ -108,7 +108,7 @@ jobs:
     with:
       repository: ${{ inputs.repository }}
       ref_name: ${{ inputs.ref_name }}
-      deploy_ref: ${{ inputs.ref_name }} # dev 환경의 경우 해당 branch 자체를 배포
+      deploy_ref: ${{ inputs.ref_name }} # dev 환경의 경우 해당 branch를 배포
       npm_token: ${{ inputs.npm_token }}
       environment: ${{ inputs.environment }}
       oci_region: ${{ inputs.region }}
