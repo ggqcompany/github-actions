@@ -48,7 +48,7 @@ on:
         required: true
       deploy_ref:
         type: string
-        requried: true
+        required: true
       commit:
         type: string
         required: true
