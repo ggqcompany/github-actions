@@ -87,7 +87,7 @@ jobs:
   Deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Print information
+      - name: Print information & Check deploy_ref
         run: |
           echo repository = ${{ inputs.repository }}
           echo ref_name = ${{ inputs.ref_name }}
@@ -102,6 +102,11 @@ jobs:
           echo server_code = ${{ inputs.server_code }}
           echo platform = ${{ inputs.platform }}
           echo version = ${{ inputs.version }}
+
+          if [ -z "${{ inputs.deploy_ref }}" ]; then
+            echo "Error: inputs.deploy_ref is required"
+            exit 1
+          fi
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -205,11 +210,6 @@ jobs:
           mkdir -p ~/.kube
           oci ce cluster create-kubeconfig --cluster-id ${{ env.OCI_OKE_OCID }} --file ~/.kube/config --region ${{ inputs.oci_region }} --token-version 2.0.0 
           export KUBECONFIG=~/.kube/config
-
-      - name: Debug file structure
-        run: |
-          pwd
-          ls -R
 
       - name: "Deploy the API on OKE"
         run: |
