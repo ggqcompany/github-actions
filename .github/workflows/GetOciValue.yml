@@ -80,6 +80,9 @@ jobs:
           elif '${{ inputs.region == 'us-sanjose-1' }}'
           then
             echo "OCI_REGION_KEY=sjc" >> $GITHUB_ENV
+          elif '${{ inputs.region == 'eu-amsterdam-1' }}'
+          then
+            echo "OCI_REGION_KEY=ams" >> $GITHUB_ENV
           else
             echo "Invalid region ${{ inputs.region }}"
             exit 1

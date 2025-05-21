@@ -27,17 +27,29 @@ on:
         required: false
       OCI_SJC_PASSPHRASE:
         required: false
+      OCI_AMS_NAMESPACE:
+        required: false
+      OCI_AMS_REGISTRY_USERNAME:
+        required: false
+      OCI_AMS_REGISTRY_PASSWORD:
+        required: false
+      OCI_AMS_CONFIG:
+        required: false
+      OCI_AMS_PASSPHRASE:
+        required: false
       OCI_ICN_OKE_OCID_DEV:
         required: false
       OCI_ICN_OKE_OCID_STG:
         required: true
       OCI_ICN_OKE_OCID_PROD:
         required: false
-      OCI_SJC_OKE_OCID_DEV:
-        required: false
       OCI_SJC_OKE_OCID_STG:
         required: false
       OCI_SJC_OKE_OCID_PROD:
+        required: false
+      OCI_AMS_OKE_OCID_STG:
+        required: false
+      OCI_AMS_OKE_OCID_PROD:
         required: false
     inputs:
       repository:
@@ -134,7 +146,7 @@ jobs:
             then
               echo "OCI_OKE_OCID=${{ secrets.OCI_ICN_OKE_OCID_PROD }}" >> $GITHUB_ENV
             else
-              echo "Invalid environment ${{ inputs.environment }}"
+              echo "Invalid environment ${{ inputs.oci_region }}-${{ inputs.environment }}"
               exit 1
             fi
           elif '${{ inputs.oci_region == 'us-sanjose-1' }}'
@@ -144,17 +156,31 @@ jobs:
             echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_SJC_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
             echo "${{ secrets.OCI_SJC_CONFIG }}" >> ~/.oci/config
             echo "${{ secrets.OCI_SJC_PASSPHRASE }}" >> ~/.oci/key.pem
-            if '${{ inputs.environment == 'DEV'}}'
-            then
-              echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_DEV }}" >> $GITHUB_ENV
-            elif '${{ inputs.environment == 'STG'}}'
+            if '${{ inputs.environment == 'STG'}}'
             then
               echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_STG }}" >> $GITHUB_ENV
             elif '${{ inputs.environment == 'PROD'}}'
             then
               echo "OCI_OKE_OCID=${{ secrets.OCI_SJC_OKE_OCID_PROD }}" >> $GITHUB_ENV
             else
-              echo "Invalid environment ${{ inputs.environment }}"
+              echo "Invalid environment ${{ inputs.oci_region }}-${{ inputs.environment }}"
+              exit 1
+            fi
+          elif '${{ inputs.oci_region == 'eu-amsterdam-1' }}'
+          then
+            echo "OCI_NAMESPACE=${{ secrets.OCI_AMS_NAMESPACE }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_USERNAME=${{ secrets.OCI_AMS_REGISTRY_USERNAME }}" >> $GITHUB_ENV
+            echo "OCI_REGISTRY_PASSWORD=${{ secrets.OCI_AMS_REGISTRY_PASSWORD }}" >> $GITHUB_ENV
+            echo "${{ secrets.OCI_AMS_CONFIG }}" >> ~/.oci/config
+            echo "${{ secrets.OCI_AMS_PASSPHRASE }}" >> ~/.oci/key.pem
+            if '${{ inputs.environment == 'STG'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_AMS_OKE_OCID_STG }}" >> $GITHUB_ENV
+            elif '${{ inputs.environment == 'PROD'}}'
+            then
+              echo "OCI_OKE_OCID=${{ secrets.OCI_AMS_OKE_OCID_PROD }}" >> $GITHUB_ENV
+            else
+              echo "Invalid environment ${{ inputs.oci_region }}-${{ inputs.environment }}"
               exit 1
             fi
           else
