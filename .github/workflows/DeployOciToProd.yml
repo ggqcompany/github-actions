@@ -91,6 +91,11 @@ on:
       use_cache:
         type: string
         required: false
+      # 배포 성공/실패 Slack 알림 전송 여부 (기본 true → 기존 호출부 동작 불변)
+      notify_slack:
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   CheckBranch:
@@ -157,7 +162,7 @@ jobs:
       deployment: ${{ needs.GetOciValue.outputs.deployment }}
 
   NotifyToSlackToSuccess:
-    if: ${{ success() }}
+    if: ${{ success() && inputs.notify_slack }}
     needs: [GetLatestTag, GetCommitFromTag, BuildAndDeployToProd]
     uses: ./.github/workflows/NotifyToSlack.yml
     secrets: inherit
@@ -170,7 +175,7 @@ jobs:
       commit: ${{ needs.GetCommitFromTag.outputs.commit }}
 
   NotifyToSlackToFail:
-    if: ${{ failure() }}
+    if: ${{ failure() && inputs.notify_slack }}
     needs: [GetLatestTag, GetCommitFromTag, BuildAndDeployToProd]
     uses: ./.github/workflows/NotifyToSlack.yml
     secrets: inherit
